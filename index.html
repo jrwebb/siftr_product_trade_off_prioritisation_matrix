@@ -1,0 +1,2798 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Siftr — Product Trade-Off &amp; Prioritisation Matrix</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
+          },
+          colors: {
+            plum: {
+              950: '#2f2963',
+              900: '#454372',
+              800: '#555287',
+              100: '#eeeef6',
+              50: '#f7f7fb'
+            },
+            sage: {
+              700: '#566962',
+              600: '#70877f',
+              200: '#d4ddd9',
+              100: '#edf1ef',
+              50: '#f6f8f7'
+            },
+            sand: {
+              600: '#a6875a',
+              500: '#c4a77d',
+              200: '#ebe0cf',
+              100: '#f7f2ea',
+              50: '#fbf8f4'
+            },
+            coral: {
+              600: '#dc7a50',
+              500: '#ef946c',
+              200: '#fad9ca',
+              100: '#fdece4',
+              50: '#fef6f2'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #fbfaf8;
+      color: #2f2963;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f5f2ec;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c4a77d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #70877f;
+    }
+
+    /* Global Fixed-Position Tooltip Portal (never clipped by overflow containers) */
+    #global-tooltip {
+      position: fixed;
+      z-index: 99999;
+      pointer-events: none;
+      max-width: 290px;
+      background-color: #2f2963;
+      color: #fbfaf8;
+      border: 1px solid #454372;
+      border-radius: 0.625rem;
+      padding: 0.65rem 0.85rem;
+      font-size: 0.74rem;
+      line-height: 1.48;
+      box-shadow: 0 14px 30px -6px rgba(47, 41, 99, 0.35), 0 4px 10px -2px rgba(47, 41, 99, 0.2);
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    #global-tooltip.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    #global-tooltip strong {
+      color: #ef946c;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col antialiased selection:bg-[#ef946c] selection:text-[#2f2963]">
+
+  <!-- Top Masthead -->
+  <header class="bg-white border-b border-sand-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3.5 min-w-0 flex-1">
+        <!-- Geometric Sift Emblem -->
+        <div class="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-br from-[#2f2963] to-[#454372] text-[#ef946c] flex items-center justify-center shadow-sm ring-1 ring-[#2f2963]/20" aria-hidden="true">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <line x1="4" y1="6.5" x2="20" y2="6.5"></line>
+            <line x1="7.5" y1="12" x2="16.5" y2="12"></line>
+            <line x1="10.5" y1="17.5" x2="13.5" y2="17.5"></line>
+          </svg>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2.5">
+            <h1 class="text-2xl font-extrabold tracking-tight text-[#2f2963] leading-none">Siftr</h1>
+          </div>
+          <p class="text-xs text-sage-700 leading-snug mt-1">
+            Make smarter trade-offs.<br />
+            <span class="sm:whitespace-nowrap">Decide what to build now, what to test first, and what to leave behind.</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Masthead Controls -->
+      <div class="flex items-center flex-wrap shrink-0 gap-2">
+        <button id="guideToggleBtn" onclick="toggleGuideBanner()" aria-expanded="true" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-sand-100 hover:bg-sand-200/70 text-[#2f2963] border border-sand-200 transition">
+          <i data-lucide="eye-off" class="w-3.5 h-3.5 text-[#454372]"></i>
+          <span id="guideToggleText">Hide Guide</span>
+        </button>
+
+        <button onclick="openPreferencesModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-plum-50 hover:bg-plum-100 text-[#454372] border border-[#454372]/25 transition">
+          <i data-lucide="settings-2" class="w-3.5 h-3.5 text-[#454372]"></i>
+          <span>Preferences &amp; Rubrics</span>
+        </button>
+
+        <button onclick="openCsvImportModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sage-50 hover:bg-sage-100 text-sage-700 border border-[#70877f]/40 transition">
+          <i data-lucide="upload" class="w-3.5 h-3.5 text-[#70877f]"></i>
+          <span>Import CSV</span>
+        </button>
+
+        <button onclick="clearAllInitiatives()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-coral-50 text-sage-700 hover:text-coral-600 border border-sand-200 hover:border-coral-200 transition" title="Clear table to start from scratch">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Clear Table</span>
+        </button>
+
+        <button onclick="openInitiativeModal()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-[#ef946c] hover:bg-coral-600 text-[#2f2963] shadow-xs transition">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>Add Initiative</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-5">
+
+    <!-- Unified Collapsible Wrapper: Both "Why Siftr" & "How Siftr Works & Rubric Guide" -->
+    <div id="unifiedGuideWrapper" class="space-y-4">
+      
+      <!-- Why Siftr Banner -->
+      <section class="bg-gradient-to-r from-[#2f2963] via-[#454372] to-[#2f2963] text-white rounded-2xl p-5 sm:p-6 shadow-sm border border-[#454372] relative">
+        <button onclick="toggleGuideBanner()" aria-label="Hide Why Siftr and Rubric Guide" class="absolute top-4 right-4 text-sand-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition" title="Collapse intro & guide">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <div class="space-y-1.5 max-w-4xl pr-8">
+          <div class="inline-flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded bg-[#ef946c]/20 text-[#ef946c] border border-[#ef946c]/40 text-[11px] font-bold uppercase tracking-wider">Why Siftr</span>
+            <h2 class="text-base sm:text-lg font-bold text-white">Commercial rigour that protects customer trust</h2>
+          </div>
+          <p class="text-xs sm:text-sm text-sand-100 leading-relaxed">
+            Most prioritisation frameworks fail because the often biased scoring efforts reward whoever lobbies loudest. Siftr anchors every bet in real economics, pairing concrete subscriber volume and CLTV cohorts with evidence confidence, reversibility, and counter-metric guardrails, so teams agree not just on what to build next, but what to test first and what to deliberately leave behind.
+          </p>
+        </div>
+      </section>
+
+      <!-- How Siftr Works & Rubric Guide Panel -->
+      <section id="rubricGuideBanner" class="bg-white border border-sand-200 rounded-xl p-5 shadow-xs">
+        <div class="space-y-4">
+          <div>
+            <h3 class="text-sm font-bold text-[#2f2963]">How Siftr scores and de-risks product bets</h3>
+            <p class="text-xs text-sage-700 mt-0.5">
+              Instead of arbitrary 1–10 sliders, Siftr anchors every initiative in concrete customer volume, subscriber lifetime value (CLTV), and evidence confidence—then checks whether the bet can be reversed or needs a small validation step first.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
+            <!-- Card 1 -->
+            <div class="bg-sand-50 border border-sand-200 rounded-xl p-3.5">
+              <div class="flex items-center gap-1.5 font-bold text-[#2f2963] mb-1.5">
+                <i data-lucide="calculator" class="w-4 h-4 text-[#454372]"></i>
+                <span>1. Siftr Composite Score</span>
+              </div>
+              <p class="text-sage-700 leading-relaxed">
+                Combines <strong>Acquisition Volume</strong>, <strong>Engagement &amp; Retention</strong>, <strong>Strategic Fit</strong>, and <strong>Annualised CLTV (£)</strong>—multiplied by <strong>Evidence Confidence</strong> (0.5× to 1.0×), divided by <strong>Delivery Effort</strong> (XS–XL), and adjusted for <strong>Reversibility</strong> and <strong>Risk</strong>.
+              </p>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="bg-sand-50 border border-sand-200 rounded-xl p-3.5">
+              <div class="flex items-center gap-1.5 font-bold text-[#2f2963] mb-1.5">
+                <i data-lucide="door-open" class="w-4 h-4 text-[#70877f]"></i>
+                <span>2. Reversibility (Doors)</span>
+              </div>
+              <p class="text-sage-700 leading-relaxed">
+                <strong>Type 2 (Two-Way Door):</strong> Easy to roll back via a feature flag or A/B test. <strong>Type 1 (One-Way Door):</strong> Pricing changes, billing migrations, or public commitments that are costly to undo and require higher evidence first.
+              </p>
+            </div>
+
+            <!-- Card 3: Counter-Metric Guardrail -->
+            <div class="bg-plum-50 border border-[#454372]/20 rounded-xl p-3.5">
+              <div class="flex items-center gap-1.5 font-bold text-[#2f2963] mb-1.5">
+                <i data-lucide="shield-alert" class="w-4 h-4 text-[#ef946c]"></i>
+                <span>3. Counter-Metric Guardrail</span>
+              </div>
+              <p class="text-sage-700 leading-relaxed">
+                The vital customer or commercial metric that <strong>must not degrade</strong> while chasing your primary goal. <em>Examples:</em> lifting trial starts without hurting 30-day renewal, adding alerts without raising opt-outs, or speeding up pages without cutting ad yield.
+              </p>
+            </div>
+
+            <!-- Card 4: Validation / Thin-Slice Step -->
+            <div class="bg-plum-50 border border-[#454372]/20 rounded-xl p-3.5">
+              <div class="flex items-center gap-1.5 font-bold text-[#2f2963] mb-1.5">
+                <i data-lucide="flask-conical" class="w-4 h-4 text-[#454372]"></i>
+                <span>4. Validation / Thin-Slice Step</span>
+              </div>
+              <p class="text-sage-700 leading-relaxed">
+                The <strong>smallest, cheapest experiment</strong> to test your riskiest assumption before committing full engineering capacity. <em>Examples:</em> a fake-door button test, interactive Figma prototype, manual concierge trial, or 10% traffic holdout.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Executive KPI Summary Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+      
+      <!-- KPI 1: Top Priority -->
+      <div class="bg-white border border-sand-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-semibold text-sage-700">Top Recommended Bet</span>
+          <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+            data-tooltip="<strong>Highest Siftr Score:</strong> Balances Acquisition, Engagement/Retention, Strategic Fit, and Evidence Confidence against Delivery Effort and Guardrail Risk.">
+            <i data-lucide="info" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div>
+          <div id="kpiTopName" class="text-sm font-bold text-[#2f2963] line-clamp-1">—</div>
+          <div class="flex items-center gap-2 mt-1.5">
+            <span id="kpiTopScore" class="text-xs font-mono font-bold text-[#2f2963] bg-plum-50 border border-[#454372]/25 px-2 py-0.5 rounded">Score: 0</span>
+            <span id="kpiTopArea" class="text-[11px] font-medium text-sage-700 truncate">Acquisition</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI 2: Modelled Annual CLTV Value -->
+      <div class="bg-white border border-sand-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-semibold text-sage-700">Annualised Subscriber Value</span>
+          <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+            data-tooltip="<strong>Subscriber Mix × Volume:</strong> Calculated from monthly subscriber starts/saves multiplied by the selected CLTV tier (£) × 12 months, scaled by Evidence Confidence.">
+            <i data-lucide="info" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="flex items-baseline justify-between mt-1">
+          <span id="kpiTotalAnnualValue" class="text-2xl font-extrabold text-[#2f2963] font-mono">£0.00m</span>
+          <span class="text-[11px] text-sage-700">confidence-adjusted</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Ready to Build -->
+      <div class="bg-white border border-sand-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-semibold text-sage-700">Ready to Build Now</span>
+          <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+            data-tooltip="<strong>Build Now Verdict:</strong> High-scoring bets backed by solid evidence (≥0.7× confidence) that can move straight into product delivery.">
+            <i data-lucide="info" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="flex items-baseline justify-between mt-1">
+          <span id="kpiBuildNowCount" class="text-2xl font-extrabold text-sage-700 font-mono">0</span>
+          <span class="text-[11px] font-semibold text-sage-700 bg-sage-100 border border-[#70877f]/35 px-2 py-0.5 rounded">Validated Bets</span>
+        </div>
+      </div>
+
+      <!-- KPI 4: Prototype / Test First -->
+      <div class="bg-white border border-sand-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-semibold text-sage-700">Prototype / Test First</span>
+          <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+            data-tooltip="<strong>Discovery Gate:</strong> High-potential ideas with low evidence confidence (0.5× Gut Feel) or hard-to-reverse Type 1 doors. Run a thin-slice test before full build.">
+            <i data-lucide="info" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <div class="flex items-baseline justify-between mt-1">
+          <span id="kpiPrototypeCount" class="text-2xl font-extrabold text-coral-600 font-mono">0</span>
+          <span class="text-[11px] font-semibold text-[#2f2963] bg-coral-100 border border-[#ef946c]/60 px-2 py-0.5 rounded">De-Risk First</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Navigation Tabs & Product Area / Verdict Filters -->
+    <div class="border-b-2 border-[#2f2963] flex flex-col xl:flex-row xl:items-end justify-between gap-3">
+      
+      <!-- 3 Streamlined Views -->
+      <nav class="flex items-center flex-wrap gap-1.5 shrink-0" aria-label="Siftr Views">
+        <button onclick="switchTab('tabMatrix')" id="btnTabMatrix" aria-selected="true" class="tab-btn px-4 py-2.5 text-xs font-bold rounded-t-xl border-2 border-b-0 border-[#2f2963] bg-[#2f2963] text-white shadow-xs flex items-center gap-2 transition whitespace-nowrap">
+          <i data-lucide="table-2" class="w-4 h-4 text-[#ef946c] tab-icon"></i>
+          <span>1. Prioritisation Matrix</span>
+        </button>
+
+        <button onclick="switchTab('tabVisualMap')" id="btnTabVisualMap" aria-selected="false" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-t-xl border border-b-0 border-sand-200 bg-sand-100/90 text-[#2f2963] hover:bg-plum-100 hover:border-[#454372]/40 flex items-center gap-2 transition whitespace-nowrap">
+          <i data-lucide="scatter-chart" class="w-4 h-4 text-[#454372] tab-icon"></i>
+          <span>2. Visual Trade-Off Map &amp; Head-to-Head</span>
+        </button>
+
+        <button onclick="switchTab('tabDecisionBrief')" id="btnTabDecisionBrief" aria-selected="false" class="tab-btn px-4 py-2.5 text-xs font-semibold rounded-t-xl border border-b-0 border-sand-200 bg-sand-100/90 text-[#2f2963] hover:bg-plum-100 hover:border-[#454372]/40 flex items-center gap-2 transition whitespace-nowrap">
+          <i data-lucide="file-text" class="w-4 h-4 text-[#454372] tab-icon"></i>
+          <span>3. Decision Brief &amp; Trade-Off Log</span>
+        </button>
+      </nav>
+
+      <!-- Single, Compact Product Area & Verdict Filter Bar -->
+      <div class="flex items-center flex-wrap gap-2 pb-2 text-xs">
+        <div class="relative w-44 sm:w-48">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-[#70877f] absolute left-2.5 top-1/2 -translate-y-1/2"></i>
+          <input type="text" id="filterSearch" oninput="renderAll()" placeholder="Search initiatives..." class="w-full bg-white border border-sand-200 text-[#2f2963] rounded-lg pl-8 pr-2.5 py-1.5 text-xs focus:outline-none focus:border-[#454372]">
+        </div>
+
+        <div class="inline-flex items-center gap-1">
+          <select id="filterArea" onchange="handleFilterAreaChange(this)" aria-label="Filter by Product Area" class="bg-white border border-sand-200 text-[#2f2963] rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#454372]">
+            <!-- Populated dynamically from Preferences -->
+          </select>
+          <button type="button" onclick="openPreferencesModal('areas')" title="Customise Product Areas" class="p-1.5 rounded-lg bg-white hover:bg-plum-50 text-sage-700 hover:text-[#2f2963] border border-sand-200 transition">
+            <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+
+        <select id="filterVerdict" onchange="renderAll()" aria-label="Filter by Verdict" class="bg-white border border-sand-200 text-[#2f2963] rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none focus:border-[#454372]">
+          <option value="ALL">All Verdicts</option>
+          <option value="Build Now">Build Now</option>
+          <option value="Prototype / Test First">Prototype / Test First</option>
+          <option value="Defer">Defer</option>
+          <option value="Do Not Do">Do Not Do</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: PRIORITISATION MATRIX (Zero Horizontal Scroll Layout)        -->
+    <!-- =================================================================== -->
+    <section id="tabMatrix" class="space-y-4">
+      <div class="bg-white border border-sand-200 rounded-xl shadow-xs overflow-hidden">
+        
+        <!-- Table Subheader & Sort Controls -->
+        <div class="p-4 sm:p-5 border-b border-sand-200 bg-sand-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-[#2f2963]">Ranked Product Initiatives</h2>
+            <p class="text-xs text-sage-700 mt-0.5">
+              Adjust pick-lists inline or click any initiative title or guardrail tag to edit details.
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <label for="sortSelector" class="text-xs font-medium text-sage-700">Sort by:</label>
+            <select id="sortSelector" onchange="renderMatrixTable()" class="bg-white border border-sand-200 text-[#2f2963] text-xs font-medium rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#454372]">
+              <option value="score_desc">Siftr Priority Score (Highest First)</option>
+              <option value="cltv_desc">Annualised Subscriber Value £ (Highest First)</option>
+              <option value="effort_asc">Smallest Effort First (XS → XL)</option>
+              <option value="confidence_desc">Highest Evidence Confidence</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Compact 7-Column Full-Width Table (Fits desktop viewports with zero horizontal overflow) -->
+        <div class="w-full overflow-x-auto xl:overflow-x-visible">
+          <table class="w-full text-left border-collapse table-fixed">
+            <thead>
+              <tr class="bg-sand-100/80 text-[#2f2963] text-[11px] font-bold tracking-wider uppercase border-b border-sand-200">
+                <th class="py-3 pl-4 pr-2 w-[68px] text-center">
+                  <div class="inline-flex items-center justify-center gap-0.5">
+                    <span>Score</span>
+                    <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                      data-tooltip="<strong>Siftr Priority Score (0–100):</strong> Weighted impact and CLTV upside scaled by Evidence Confidence, divided by Delivery Effort and adjusted for Reversibility and Guardrail Risk.">
+                      <i data-lucide="help-circle" class="w-3 h-3"></i>
+                    </button>
+                  </div>
+                </th>
+
+                <th class="py-3 px-2.5 w-auto">
+                  Initiative, Area &amp; Hypothesis
+                </th>
+
+                <th class="py-3 px-2 w-[185px]">
+                  <div class="inline-flex items-center gap-1">
+                    <span>Commercial Upside</span>
+                    <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                      data-tooltip="<strong>Acquisition &amp; Subscriber CLTV:</strong> Monthly starts/saves × selected CLTV tier (£) × 12 months × Evidence Confidence.">
+                      <i data-lucide="help-circle" class="w-3 h-3"></i>
+                    </button>
+                  </div>
+                </th>
+
+                <th class="py-3 px-2 w-[170px]">
+                  <div class="inline-flex items-center gap-1">
+                    <span>Eng / Ret &amp; Strategy</span>
+                    <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                      data-tooltip="<strong>Habit &amp; Strategic Fit (0–5):</strong><br>• <strong>Top:</strong> Engagement &amp; Retention lift.<br>• <strong>Bottom:</strong> Alignment to company goals.">
+                      <i data-lucide="help-circle" class="w-3 h-3"></i>
+                    </button>
+                  </div>
+                </th>
+
+                <th class="py-3 px-2 w-[160px]">
+                  <div class="inline-flex items-center gap-1">
+                    <span>Effort &amp; Evidence</span>
+                    <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                      data-tooltip="<strong>Delivery Size &amp; Proof:</strong><br>• <strong>Effort:</strong> T-shirt size (XS to XL).<br>• <strong>Evidence:</strong> 0.5× Gut Feel up to 1.0× Validated A/B Test.">
+                      <i data-lucide="help-circle" class="w-3 h-3"></i>
+                    </button>
+                  </div>
+                </th>
+
+                <th class="py-3 px-2 w-[165px]">
+                  <div class="inline-flex items-center gap-1">
+                    <span>Door, Risk &amp; Verdict</span>
+                    <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                      data-tooltip="<strong>Reversibility &amp; Action Gate:</strong><br>• <strong>Type 2:</strong> Easy two-way door.<br>• <strong>Type 1:</strong> Hard-to-reverse decision.<br>• <strong>Verdict:</strong> Build Now, Prototype First, Defer, or Do Not Do.">
+                      <i data-lucide="help-circle" class="w-3 h-3"></i>
+                    </button>
+                  </div>
+                </th>
+
+                <th class="py-3 pl-1 pr-3 w-[60px] text-right">Edit</th>
+              </tr>
+            </thead>
+            <tbody id="matrixTableBody" class="divide-y divide-sand-200 text-sm">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: VISUAL TRADE-OFF MAP & HEAD-TO-HEAD COMPARISON               -->
+    <!-- =================================================================== -->
+    <section id="tabVisualMap" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left 7 Cols: 2x2 Quadrant Bubble Chart -->
+        <div class="lg:col-span-7 bg-white border border-sand-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-sand-200 gap-2">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h3 class="text-sm font-bold text-[#2f2963] uppercase tracking-wide">2×2 Strategic &amp; Commercial Value vs. Effort &amp; Risk</h3>
+                <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                  data-tooltip="<strong>How to read this map:</strong> Top-Left = High-Impact Quick Wins. Top-Right = Major Strategic Bets. Bubble size represents confidence-adjusted annualised subscriber value (£).">
+                  <i data-lucide="help-circle" class="w-4 h-4"></i>
+                </button>
+              </div>
+              <p class="text-xs text-sage-700 mt-0.5">Bubble size = Annualised Subscriber CLTV Value (£)</p>
+            </div>
+          </div>
+
+          <div class="relative w-full h-[360px] mt-4">
+            <canvas id="tradeOffChart"></canvas>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-sand-200 flex flex-wrap items-center justify-center gap-4 text-[11px] font-medium text-sage-700">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#70877f] inline-block"></span> Build Now</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#ef946c] inline-block"></span> Prototype / Test First</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#454372] inline-block"></span> Defer</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-[#c4a77d] inline-block"></span> Do Not Do</span>
+          </div>
+        </div>
+
+        <!-- Right 5 Cols: Head-to-Head Trade-Off Comparison -->
+        <div class="lg:col-span-5 bg-white border border-sand-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-sand-200">
+              <div class="flex items-center gap-2">
+                <i data-lucide="scale" class="w-4 h-4 text-[#454372]"></i>
+                <h3 class="text-sm font-bold text-[#2f2963] uppercase tracking-wide">Head-to-Head Trade-Off</h3>
+              </div>
+              <button type="button" class="text-[#70877f] hover:text-[#2f2963] focus:outline-none"
+                data-tooltip="<strong>Direct Comparison:</strong> Compare any two competing bets side by side to inspect differences in CLTV upside, delivery effort, evidence quality, and guardrail risk.">
+                <i data-lucide="help-circle" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 mt-4">
+              <div>
+                <label for="compareA" class="block text-[11px] font-bold text-sage-700 uppercase tracking-wider mb-1">Contender A</label>
+                <select id="compareA" onchange="renderHeadToHead()" class="w-full bg-sand-50 border border-sand-200 text-[#2f2963] rounded-lg px-2.5 py-2 text-xs font-medium focus:outline-none focus:border-[#454372]"></select>
+              </div>
+              <div>
+                <label for="compareB" class="block text-[11px] font-bold text-sage-700 uppercase tracking-wider mb-1">Contender B</label>
+                <select id="compareB" onchange="renderHeadToHead()" class="w-full bg-sand-50 border border-sand-200 text-[#2f2963] rounded-lg px-2.5 py-2 text-xs font-medium focus:outline-none focus:border-[#454372]"></select>
+              </div>
+            </div>
+
+            <div id="headToHeadOutput" class="mt-4 space-y-3">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: DECISION BRIEF & TRADE-OFF LOG                               -->
+    <!-- =================================================================== -->
+    <section id="tabDecisionBrief" class="hidden space-y-6">
+      <div class="bg-white border border-sand-200 rounded-xl p-6 shadow-xs">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-sand-200 gap-3">
+          <div>
+            <h3 class="text-base font-bold text-[#2f2963] flex items-center gap-2">
+              <i data-lucide="file-check-2" class="w-5 h-5 text-[#454372]"></i>
+              <span>Product Prioritisation &amp; Trade-Off Decision Brief</span>
+            </h3>
+            <p class="text-xs text-sage-700 mt-0.5">
+              Executive summary with "Even-Over" trade-off statements, counter-metric guardrails, and thin-slice validation plans.
+            </p>
+          </div>
+
+          <button onclick="copyMarkdownBrief()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold bg-[#ef946c] hover:bg-coral-600 text-[#2f2963] shadow-xs transition">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Copy Markdown Brief</span>
+          </button>
+        </div>
+
+        <div id="decisionBriefBody" class="mt-5 space-y-6 text-sm text-[#2f2963] leading-relaxed">
+          <!-- Populated by JS -->
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- ADD / EDIT INITIATIVE MODAL                                           -->
+  <!-- ===================================================================== -->
+  <div id="initiativeModal" class="fixed inset-0 z-50 hidden bg-[#2f2963]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white border border-sand-200 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-sand-200 flex items-center justify-between bg-sand-50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-[#2f2963] text-[#ef946c] flex items-center justify-center">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 id="modalHeading" class="text-base font-bold text-[#2f2963]">Add Product Initiative</h3>
+            <p class="text-xs text-sage-700">Score using your configured rubrics, subscriber CLTV mix, and guardrails</p>
+          </div>
+        </div>
+        <button onclick="closeInitiativeModal()" class="text-sage-700 hover:text-[#2f2963] p-1 rounded-lg hover:bg-sand-200/60 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="initiativeForm" onsubmit="saveInitiativeForm(event)" class="px-6 py-5 overflow-y-auto space-y-4 text-xs">
+        <input type="hidden" id="editItemId" value="">
+
+        <!-- Row 1: Title & Product Area -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
+          <div class="sm:col-span-7">
+            <label for="fieldName" class="block font-bold text-[#2f2963] mb-1">Initiative Name *</label>
+            <input type="text" id="fieldName" required placeholder="e.g. Dynamic Soft Registration & Propensity Metering" class="w-full bg-white border border-sand-200 rounded-lg px-3 py-2 text-[#2f2963] placeholder-sage-600/60 focus:ring-2 focus:ring-[#454372] focus:outline-none">
+          </div>
+
+          <div class="sm:col-span-5">
+            <div class="flex items-center justify-between mb-1">
+              <label for="fieldArea" class="block font-bold text-[#2f2963]">Product Area</label>
+              <button type="button" onclick="closeInitiativeModal(); openPreferencesModal('areas');" class="text-[11px] font-semibold text-[#454372] hover:underline">
+                + Manage Areas
+              </button>
+            </div>
+            <select id="fieldArea" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+              <!-- Populated from Preferences -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Mandatory Impact Hypothesis -->
+        <div>
+          <label for="fieldHypothesis" class="block font-bold text-[#2f2963] mb-1">
+            Impact Hypothesis / Rationale * <span class="font-normal text-sage-700">(Required — explain why this changes customer behaviour)</span>
+          </label>
+          <input type="text" id="fieldHypothesis" required placeholder="e.g. Requiring free account creation on the 3rd visit builds a known-user cohort that converts 2.6× higher." class="w-full bg-white border border-sand-200 rounded-lg px-3 py-2 text-[#2f2963] placeholder-sage-600/60 focus:ring-2 focus:ring-[#454372] focus:outline-none">
+        </div>
+
+        <!-- Anchored Rubric Section -->
+        <div class="bg-plum-50 border border-[#454372]/20 rounded-xl p-4 space-y-4">
+          <div class="flex items-center justify-between border-b border-[#454372]/15 pb-2">
+            <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">Anchored Scoring Rubrics (Pick-Lists)</h4>
+            <button type="button" onclick="closeInitiativeModal(); openPreferencesModal();" class="text-[11px] font-semibold text-[#454372] hover:underline">
+              Customise pick-list values →
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <!-- Acquisition Impact -->
+            <div>
+              <label for="fieldAcq" class="block font-bold text-[#2f2963] mb-1">Acquisition Volume</label>
+              <select id="fieldAcq" onchange="syncStartsFromAcqBucket()" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+                <!-- Populated from Preferences -->
+              </select>
+            </div>
+
+            <!-- Engagement & Retention Impact -->
+            <div>
+              <label for="fieldEngRet" class="block font-bold text-[#2f2963] mb-1">Engagement &amp; Retention</label>
+              <select id="fieldEngRet" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+                <!-- Populated from Preferences -->
+              </select>
+            </div>
+
+            <!-- Strategic Alignment -->
+            <div>
+              <label for="fieldStrategy" class="block font-bold text-[#2f2963] mb-1">Strategic Fit</label>
+              <select id="fieldStrategy" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+                <option value="0">0 — Off-strategy / Distraction</option>
+                <option value="1">1 — Tangential</option>
+                <option value="2">2 — Supports secondary OKR</option>
+                <option value="3">3 — Clear team goal</option>
+                <option value="4" selected>4 — Key annual priority</option>
+                <option value="5">5 — Top company strategic pillar</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Subscriber Mix / CLTV Tier + Monthly Volume -->
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 pt-1">
+            <div class="sm:col-span-5">
+              <label for="fieldCltvTier" class="block font-bold text-[#2f2963] mb-1">Subscriber Tier (CLTV £)</label>
+              <select id="fieldCltvTier" onchange="recalculateModalPreview()" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+                <!-- Populated from Preferences -->
+              </select>
+            </div>
+
+            <div class="sm:col-span-4">
+              <label for="fieldMonthlyStarts" class="block font-bold text-[#2f2963] mb-1">Est. Monthly Starts / Saves</label>
+              <input type="number" id="fieldMonthlyStarts" min="0" max="100000" step="10" value="350" oninput="recalculateModalPreview()" class="w-full bg-white border border-sand-200 rounded-lg px-3 py-2 text-[#2f2963] font-mono focus:ring-2 focus:ring-[#454372] focus:outline-none">
+            </div>
+
+            <div class="sm:col-span-3 flex flex-col justify-end">
+              <div class="bg-white border border-sand-200 rounded-lg px-3 py-1.5 text-right">
+                <span class="text-[10px] uppercase font-bold text-sage-700 block">Gross Annual CLTV</span>
+                <span id="modalGrossCltvPreview" class="text-sm font-extrabold font-mono text-[#2f2963]">£1.05m</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delivery Effort, Confidence, Reversibility & Guardrail Risk -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <div>
+            <label for="fieldEffort" class="block font-bold text-[#2f2963] mb-1">Delivery Effort</label>
+            <select id="fieldEffort" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+              <!-- Populated from Preferences -->
+            </select>
+          </div>
+
+          <div>
+            <label for="fieldConfidence" class="block font-bold text-[#2f2963] mb-1">Evidence Confidence</label>
+            <select id="fieldConfidence" onchange="recalculateModalPreview()" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+              <option value="0.5">0.5× Gut Feel / Hypothesis</option>
+              <option value="0.7">0.7× Qualitative Research</option>
+              <option value="0.85" selected>0.85× Analogous Test / Data</option>
+              <option value="1.0">1.0× Validated A/B Test</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="fieldDoor" class="block font-bold text-[#2f2963] mb-1">Reversibility (Door)</label>
+            <select id="fieldDoor" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+              <option value="Type 2" selected>Type 2: Easy Two-Way Door</option>
+              <option value="Type 1">Type 1: Hard-to-Reverse Door</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="fieldRisk" class="block font-bold text-[#2f2963] mb-1">Guardrail Risk</label>
+            <select id="fieldRisk" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-2 text-[#2f2963] focus:ring-2 focus:ring-[#454372] focus:outline-none">
+              <option value="Low" selected>Low Risk</option>
+              <option value="Moderate">Moderate Risk</option>
+              <option value="High">High Risk (Churn/UX/Trust)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Counter-Metric Guardrail & Validation / Thin-Slice Step -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label for="fieldGuardrail" class="block font-bold text-[#2f2963] mb-0.5">Counter-Metric Guardrail</label>
+            <p class="text-[11px] text-sage-700 mb-1">Metric that must NOT degrade while chasing upside.</p>
+            <input type="text" id="fieldGuardrail" placeholder="e.g. 30-day renewal rate must not drop by >1.5%" class="w-full bg-white border border-sand-200 rounded-lg px-3 py-2 text-[#2f2963] placeholder-sage-600/60 focus:ring-2 focus:ring-[#454372] focus:outline-none">
+          </div>
+
+          <div>
+            <label for="fieldValidation" class="block font-bold text-[#2f2963] mb-0.5">Validation / Thin-Slice Step</label>
+            <p class="text-[11px] text-sage-700 mb-1">Cheapest experiment to test assumptions before full build.</p>
+            <input type="text" id="fieldValidation" placeholder="e.g. Run a 2-week fake-door test or 10% holdout" class="w-full bg-white border border-sand-200 rounded-lg px-3 py-2 text-[#2f2963] placeholder-sage-600/60 focus:ring-2 focus:ring-[#454372] focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="pt-3 border-t border-sand-200 flex items-center justify-end gap-2.5">
+          <button type="button" onclick="closeInitiativeModal()" class="px-4 py-2 rounded-lg font-medium text-sage-700 hover:text-[#2f2963] bg-sand-100 hover:bg-sand-200/70 transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-lg font-bold text-[#2f2963] bg-[#ef946c] hover:bg-coral-600 shadow-xs transition">Save to Matrix</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- CSV IMPORT & SMART COLUMN MAPPING MODAL                               -->
+  <!-- ===================================================================== -->
+  <div id="csvImportModal" class="fixed inset-0 z-50 hidden bg-[#2f2963]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white border border-sand-200 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-sand-200 flex items-center justify-between bg-[#2f2963] text-white">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-[#ef946c] text-[#2f2963] flex items-center justify-center">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Import Initiatives from CSV</h3>
+            <p class="text-xs text-sand-100">Upload a file or paste spreadsheet rows—Siftr auto-detects headers and normalises rubrics</p>
+          </div>
+        </div>
+        <button onclick="closeCsvImportModal()" class="text-sand-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-5 overflow-y-auto space-y-5 text-xs">
+        
+        <!-- Step 1: Template Download & Upload / Paste -->
+        <div class="bg-sand-50 border border-sand-200 rounded-xl p-4 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span class="font-bold text-[#2f2963] block">1. Upload CSV File or Paste Raw CSV</span>
+              <span class="text-sage-700">Works with exports from Google Sheets, Excel, Notion, Linear, or Jira.</span>
+            </div>
+            <button type="button" onclick="downloadCsvTemplate()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold bg-white hover:bg-plum-50 text-[#454372] border border-[#454372]/30 transition shrink-0">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Download CSV Template</span>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+            <div class="sm:col-span-4">
+              <label class="flex flex-col items-center justify-center h-28 border-2 border-dashed border-[#70877f]/50 hover:border-[#454372] rounded-xl bg-white cursor-pointer p-3 text-center transition">
+                <i data-lucide="upload-cloud" class="w-6 h-6 text-[#70877f] mb-1"></i>
+                <span class="font-semibold text-[#2f2963]">Choose .CSV file</span>
+                <span id="csvFileNameLabel" class="text-[11px] text-sage-700 mt-0.5 truncate max-w-full">or paste text on the right</span>
+                <input type="file" id="csvFileInput" accept=".csv,text/csv" onchange="handleCsvFileUpload(event)" class="hidden">
+              </label>
+            </div>
+
+            <div class="sm:col-span-8">
+              <textarea id="csvRawTextarea" rows="4" oninput="parseCsvInput(this.value)" placeholder="Paste CSV headers and rows here, e.g.&#10;Title,Product Area,Hypothesis,Acquisition,CLTV Tier,Engagement,Strategic Fit,Effort,Confidence,Door,Risk,Guardrail,Validation&#10;Newsletter Referral Rewards,Acquisition,Giving subscribers a free month per 3 referrals lifts organic starts,3,Core Monthly Digital,2,4,S,0.85,Type 2,Low,Referral fraud under 2%,Run 2-week manual cohort test" class="w-full h-28 bg-white border border-sand-200 rounded-xl p-2.5 font-mono text-[11px] text-[#2f2963] placeholder-sage-600/50 focus:ring-2 focus:ring-[#454372] focus:outline-none"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Interactive Column Mapping -->
+        <div id="csvMappingSection" class="hidden space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">2. Smart Column Mapping (Adjust if needed)</h4>
+            <span id="csvDetectedBadge" class="text-[11px] font-semibold text-sage-700 bg-sage-100 px-2.5 py-0.5 rounded-full">0 columns detected</span>
+          </div>
+          <div id="csvMappingGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 bg-plum-50/70 border border-[#454372]/20 rounded-xl p-3.5">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Step 3: Live Preview & Validation -->
+        <div id="csvPreviewSection" class="hidden space-y-2.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">3. Preview &amp; Validation Check</h4>
+            <div id="csvValidationSummary" class="text-[11px] font-medium"></div>
+          </div>
+
+          <div class="border border-sand-200 rounded-xl overflow-x-auto max-h-56">
+            <table class="w-full text-left border-collapse text-[11px]">
+              <thead class="bg-sand-100 text-[#2f2963] font-bold uppercase sticky top-0">
+                <tr>
+                  <th class="py-2 px-2.5">Status</th>
+                  <th class="py-2 px-2.5">Initiative</th>
+                  <th class="py-2 px-2.5">Area</th>
+                  <th class="py-2 px-2.5">Acq / Eng / Strat</th>
+                  <th class="py-2 px-2.5">CLTV Tier</th>
+                  <th class="py-2 px-2.5">Effort &amp; Conf.</th>
+                  <th class="py-2 px-2.5">Guardrail</th>
+                </tr>
+              </thead>
+              <tbody id="csvPreviewBody" class="divide-y divide-sand-200 bg-white">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-sand-200 bg-sand-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <label class="inline-flex items-center gap-2 text-sage-700 font-medium cursor-pointer">
+          <input type="checkbox" id="csvReplaceExisting" class="rounded border-sand-200 text-[#454372] focus:ring-[#454372]">
+          <span>Replace existing initiatives in table (leave unchecked to append)</span>
+        </label>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeCsvImportModal()" class="px-4 py-2 rounded-lg font-medium text-sage-700 hover:text-[#2f2963] bg-white border border-sand-200 transition">Cancel</button>
+          <button type="button" id="csvConfirmImportBtn" onclick="confirmCsvImport()" disabled class="px-5 py-2 rounded-lg font-bold text-[#2f2963] bg-[#ef946c] hover:bg-coral-600 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs transition">
+            Import Valid Rows
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- PREFERENCES & RUBRICS CUSTOMISER MODAL                                -->
+  <!-- ===================================================================== -->
+  <div id="preferencesModal" class="fixed inset-0 z-50 hidden bg-[#2f2963]/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white border border-sand-200 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-sand-200 flex items-center justify-between bg-[#2f2963] text-white">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-[#ef946c] text-[#2f2963] flex items-center justify-center">
+            <i data-lucide="settings-2" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold">Preferences &amp; Pick-List Rubrics</h3>
+            <p class="text-xs text-sand-100">Tailor subscriber CLTV tiers, volume buckets, product areas, and effort sizing to your business</p>
+          </div>
+        </div>
+        <button onclick="closePreferencesModal()" class="text-sand-200 hover:text-white p-1 rounded-lg hover:bg-white/10 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 py-5 overflow-y-auto space-y-6 text-xs">
+        
+        <!-- Industry Quick-Switch Presets -->
+        <div class="bg-plum-50 border border-[#454372]/20 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <span class="font-bold text-[#2f2963] block">Quick-Load Subscription Industry Template</span>
+            <span class="text-sage-700">Switch pick-list values to match your business model, or edit any row below directly.</span>
+          </div>
+          <div class="flex items-center flex-wrap gap-2">
+            <button type="button" onclick="applyIndustryPreset('publishing', false)" class="px-3 py-1.5 rounded-lg font-semibold bg-white hover:bg-[#454372] hover:text-white text-[#2f2963] border border-[#454372]/30 transition">
+              Digital Publishing &amp; News
+            </button>
+            <button type="button" onclick="applyIndustryPreset('fitness', false)" class="px-3 py-1.5 rounded-lg font-semibold bg-white hover:bg-[#454372] hover:text-white text-[#2f2963] border border-[#454372]/30 transition">
+              Consumer Fitness / App
+            </button>
+            <button type="button" onclick="applyIndustryPreset('saas', false)" class="px-3 py-1.5 rounded-lg font-semibold bg-white hover:bg-[#454372] hover:text-white text-[#2f2963] border border-[#454372]/30 transition">
+              B2B / Prosumer SaaS
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <!-- 1. Subscriber Tiers & CLTV (£) -->
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">1. Subscriber Tiers &amp; Average CLTV (£)</h4>
+              <button type="button" onclick="addPrefCltvRow()" class="text-[#454372] hover:text-[#2f2963] font-semibold">+ Add Tier</button>
+            </div>
+            <div id="prefCltvList" class="space-y-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- 2. Acquisition Volume Buckets (Levels 0-5) -->
+          <div class="space-y-2.5">
+            <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">2. Acquisition Volume Pick-List (Levels 0–5)</h4>
+            <div id="prefAcqList" class="space-y-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- 3. Product Areas / Squads (Dedicated Interactive Manager) -->
+          <div id="prefAreasSection" class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">3. Product Areas / Squads</h4>
+              <button type="button" onclick="addPrefAreaRow()" class="text-[#454372] hover:text-[#2f2963] font-semibold">+ Add Area</button>
+            </div>
+            <p class="text-[11px] text-sage-700">Add, rename, recolour, or remove Product Areas used across the matrix and filters.</p>
+            <div id="prefAreasList" class="space-y-2 max-h-44 overflow-y-auto pr-1">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- 4. Effort T-Shirt Sizing Labels -->
+          <div class="space-y-2.5">
+            <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">4. Delivery Effort T-Shirt Sizing</h4>
+            <div id="prefEffortList" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 5. Engagement & Retention Pick-List Labels (Levels 0-5) -->
+        <div class="space-y-2.5 pt-2 border-t border-sand-200">
+          <h4 class="font-bold uppercase tracking-wider text-[#2f2963] text-[11px]">5. Engagement &amp; Retention Pick-List Descriptions (Levels 0–5)</h4>
+          <div id="prefEngRetList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-sand-200 bg-sand-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <button type="button" onclick="applyIndustryPreset('publishing', true)" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-sage-700 hover:text-[#2f2963] hover:bg-sand-200/70 transition">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Reset Rubrics &amp; Sample Data to Defaults</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closePreferencesModal()" class="px-4 py-2 rounded-lg font-medium text-sage-700 hover:text-[#2f2963] bg-white border border-sand-200 transition">Cancel</button>
+          <button type="button" onclick="savePreferences()" class="px-5 py-2 rounded-lg font-bold text-[#2f2963] bg-[#ef946c] hover:bg-coral-600 shadow-xs transition">Save Preferences</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 hidden bg-[#2f2963] text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-medium border border-[#454372]">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-[#ef946c]"></i>
+    <span id="toastText">Updated</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-sand-200 bg-white py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-sage-700">
+      <p><strong class="text-[#2f2963]">Siftr</strong> — Product Trade-Off &amp; Prioritisation Matrix</p>
+      <span>Evidence-Led Scoring &amp; Subscriber Value Modelling (£ GBP)</span>
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC                                          -->
+  <!-- ===================================================================== -->
+  <script>
+    // 1. GLOBAL FIXED-POSITION TOOLTIP PORTAL (Never clipped by overflow or sticky headers)
+    (function setupGlobalTooltipPortal() {
+      const portal = document.createElement('div');
+      portal.id = 'global-tooltip';
+      portal.setAttribute('role', 'tooltip');
+      document.body.appendChild(portal);
+
+      let activeTrigger = null;
+
+      function positionTooltip(triggerEl) {
+        const text = triggerEl.getAttribute('data-tooltip');
+        if (!text) return;
+
+        portal.innerHTML = text;
+        portal.classList.add('visible');
+
+        const rect = triggerEl.getBoundingClientRect();
+        const tipRect = portal.getBoundingClientRect();
+        const padding = 10;
+
+        let top = rect.top - tipRect.height - 8;
+        let left = rect.left + (rect.width / 2) - (tipRect.width / 2);
+
+        if (top < padding) {
+          top = rect.bottom + 8;
+        }
+        if (top + tipRect.height > window.innerHeight - padding) {
+          top = Math.max(padding, window.innerHeight - tipRect.height - padding);
+        }
+        if (left < padding) {
+          left = padding;
+        } else if (left + tipRect.width > window.innerWidth - padding) {
+          left = window.innerWidth - tipRect.width - padding;
+        }
+
+        portal.style.top = `${Math.round(top)}px`;
+        portal.style.left = `${Math.round(left)}px`;
+      }
+
+      function hideTooltip() {
+        activeTrigger = null;
+        portal.classList.remove('visible');
+      }
+
+      document.addEventListener('mouseover', (e) => {
+        const trigger = e.target.closest('[data-tooltip]');
+        if (trigger) {
+          activeTrigger = trigger;
+          positionTooltip(trigger);
+        }
+      });
+
+      document.addEventListener('mouseout', (e) => {
+        const trigger = e.target.closest('[data-tooltip]');
+        if (trigger && (!e.relatedTarget || !trigger.contains(e.relatedTarget))) {
+          hideTooltip();
+        }
+      });
+
+      document.addEventListener('focusin', (e) => {
+        const trigger = e.target.closest('[data-tooltip]');
+        if (trigger) {
+          activeTrigger = trigger;
+          positionTooltip(trigger);
+        }
+      });
+
+      document.addEventListener('focusout', (e) => {
+        const trigger = e.target.closest('[data-tooltip]');
+        if (trigger) {
+          hideTooltip();
+        }
+      });
+
+      window.addEventListener('scroll', () => {
+        if (activeTrigger) positionTooltip(activeTrigger);
+      }, true);
+
+      window.addEventListener('resize', () => {
+        if (activeTrigger) positionTooltip(activeTrigger);
+      });
+    })();
+
+    // 2. INDUSTRY RUBRIC TEMPLATES (COOLORS PALETTE BADGES)
+    const AREA_COLOR_THEMES = {
+      indigo:  { label: 'Deep Indigo', badge: 'bg-plum-100 text-[#2f2963] border-[#454372]/30' },
+      sage:    { label: 'Muted Sage',  badge: 'bg-sage-100 text-sage-700 border-[#70877f]/40' },
+      sand:    { label: 'Warm Sand',   badge: 'bg-sand-100 text-sand-600 border-[#c4a77d]/50' },
+      coral:   { label: 'Coral Peach', badge: 'bg-coral-100 text-coral-600 border-[#ef946c]/50' },
+      plum:    { label: 'Slate Plum',  badge: 'bg-plum-50 text-[#454372] border-[#454372]/25' }
+    };
+
+    const INDUSTRY_TEMPLATES = {
+      publishing: {
+        label: 'Digital Publishing & News',
+        areas: [
+          { name: 'Acquisition', color: 'indigo' },
+          { name: 'Engagement', color: 'plum' },
+          { name: 'Retention', color: 'sage' },
+          { name: 'Core Experience', color: 'sand' }
+        ],
+        cltvTiers: [
+          { id: 'tier_core_m', name: 'Core Monthly Digital', cltv: 251 },
+          { id: 'tier_annual', name: 'Annual Digital Sub', cltv: 238 },
+          { id: 'tier_bundle', name: 'Multi-Year / Bundle', cltv: 400 },
+          { id: 'tier_trial',  name: 'Free Trial to Paid Cohort', cltv: 82 },
+          { id: 'tier_intro',  name: '12-Week Intro Offer', cltv: 41 }
+        ],
+        acqBuckets: [
+          { level: 0, label: '0 — None (0 starts/mo)', defaultStarts: 0 },
+          { level: 1, label: '1 — Very Low (100–300/mo)', defaultStarts: 200 },
+          { level: 2, label: '2 — Low (300–500/mo)', defaultStarts: 400 },
+          { level: 3, label: '3 — Medium (500–700/mo)', defaultStarts: 600 },
+          { level: 4, label: '4 — High (700–900/mo)', defaultStarts: 800 },
+          { level: 5, label: '5 — Very High (900+/mo)', defaultStarts: 1000 }
+        ],
+        engRetBuckets: [
+          { level: 0, label: '0 — None (No habit/churn shift)' },
+          { level: 1, label: '1 — Very Low (Minor UX polish)' },
+          { level: 2, label: '2 — Low (Modest repeat visit lift)' },
+          { level: 3, label: '3 — Medium (+5–10% active days)' },
+          { level: 4, label: '4 — High (Material churn reduction)' },
+          { level: 5, label: '5 — Very High (Core daily habit)' }
+        ],
+        effortSizes: [
+          { code: 'XS', label: 'XS (<1 Sprint)', weight: 1.0, numeric: 1 },
+          { code: 'S',  label: 'S (1–2 Sprints)', weight: 1.4, numeric: 2 },
+          { code: 'M',  label: 'M (3–4 Sprints)', weight: 2.0, numeric: 4 },
+          { code: 'L',  label: 'L (5–8 Sprints)', weight: 2.8, numeric: 7 },
+          { code: 'XL', label: 'XL (9+ Sprints)', weight: 3.8, numeric: 10 }
+        ]
+      },
+      fitness: {
+        label: 'Consumer Fitness & Membership App',
+        areas: [
+          { name: 'Trial Acquisition', color: 'indigo' },
+          { name: 'Habit & Streaks', color: 'plum' },
+          { name: 'Annual Renewal', color: 'sage' },
+          { name: 'Social & Clubs', color: 'coral' }
+        ],
+        cltvTiers: [
+          { id: 'fit_annual', name: 'Annual Individual (£65/yr)', cltv: 165 },
+          { id: 'fit_family', name: 'Family / Duo Plan (£99/yr)', cltv: 260 },
+          { id: 'fit_monthly', name: 'Monthly Member (£8.99/mo)', cltv: 118 },
+          { id: 'fit_trial',  name: '30-Day Free Trial Cohort', cltv: 54 }
+        ],
+        acqBuckets: [
+          { level: 0, label: '0 — None (0 trials/mo)', defaultStarts: 0 },
+          { level: 1, label: '1 — Very Low (500–1.5k/mo)', defaultStarts: 1000 },
+          { level: 2, label: '2 — Low (1.5k–3k/mo)', defaultStarts: 2200 },
+          { level: 3, label: '3 — Medium (3k–6k/mo)', defaultStarts: 4500 },
+          { level: 4, label: '4 — High (6k–10k/mo)', defaultStarts: 8000 },
+          { level: 5, label: '5 — Very High (10k+/mo)', defaultStarts: 12000 }
+        ],
+        engRetBuckets: [
+          { level: 0, label: '0 — None' },
+          { level: 1, label: '1 — Cosmetic polish' },
+          { level: 2, label: '2 — +1 workout logged/mo' },
+          { level: 3, label: '3 — +10% 60-day streak retention' },
+          { level: 4, label: '4 — Cuts voluntary churn by >12%' },
+          { level: 5, label: '5 — Core weekly habit loop' }
+        ],
+        effortSizes: [
+          { code: 'XS', label: 'XS (<1 Week)', weight: 1.0, numeric: 1 },
+          { code: 'S',  label: 'S (1–2 Weeks)', weight: 1.4, numeric: 2 },
+          { code: 'M',  label: 'M (3–4 Weeks)', weight: 2.0, numeric: 4 },
+          { code: 'L',  label: 'L (6–8 Weeks)', weight: 2.8, numeric: 7 },
+          { code: 'XL', label: 'XL (1 Quarter+)', weight: 3.8, numeric: 10 }
+        ]
+      },
+      saas: {
+        label: 'B2B / Prosumer Subscription SaaS',
+        areas: [
+          { name: 'Self-Serve Growth', color: 'indigo' },
+          { name: 'Team Expansion', color: 'plum' },
+          { name: 'Retention & Billing', color: 'sage' },
+          { name: 'Core Workflow', color: 'sand' }
+        ],
+        cltvTiers: [
+          { id: 'saas_pro',  name: 'Pro Individual (£24/mo)', cltv: 680 },
+          { id: 'saas_team', name: 'Team Workspace (5 seats)', cltv: 2400 },
+          { id: 'saas_biz',  name: 'Business Annual Plan', cltv: 5200 },
+          { id: 'saas_free', name: 'Freemium Upgrade Cohort', cltv: 310 }
+        ],
+        acqBuckets: [
+          { level: 0, label: '0 — None (0 workspaces/mo)', defaultStarts: 0 },
+          { level: 1, label: '1 — Very Low (10–30/mo)', defaultStarts: 20 },
+          { level: 2, label: '2 — Low (30–75/mo)', defaultStarts: 50 },
+          { level: 3, label: '3 — Medium (75–150/mo)', defaultStarts: 110 },
+          { level: 4, label: '4 — High (150–300/mo)', defaultStarts: 220 },
+          { level: 5, label: '5 — Very High (300+/mo)', defaultStarts: 380 }
+        ],
+        engRetBuckets: [
+          { level: 0, label: '0 — None' },
+          { level: 1, label: '1 — Minor UI improvement' },
+          { level: 2, label: '2 — Reduces setup friction' },
+          { level: 3, label: '3 — +10% weekly active seats' },
+          { level: 4, label: '4 — Cuts logo churn by >15%' },
+          { level: 5, label: '5 — Mission-critical workflow' }
+        ],
+        effortSizes: [
+          { code: 'XS', label: 'XS (2–3 Days)', weight: 1.0, numeric: 1 },
+          { code: 'S',  label: 'S (1 Sprint)', weight: 1.4, numeric: 2 },
+          { code: 'M',  label: 'M (2–3 Sprints)', weight: 2.0, numeric: 4 },
+          { code: 'L',  label: 'L (4–6 Sprints)', weight: 2.8, numeric: 7 },
+          { code: 'XL', label: 'XL (7+ Sprints)', weight: 3.8, numeric: 10 }
+        ]
+      }
+    };
+
+    // Default concrete publishing examples
+    const DEFAULT_INITIATIVES = [
+      {
+        id: 'init_101',
+        name: 'Dynamic Soft Registration & Propensity Metering',
+        area: 'Acquisition',
+        hypothesis: 'Requiring free account creation on the 3rd visit builds a known-user cohort that converts 2.6× higher.',
+        acq: 4,
+        engRet: 3,
+        strategy: 5,
+        cltvTierId: 'tier_core_m',
+        monthlyStarts: 820,
+        effort: 'M',
+        confidence: 0.85,
+        door: 'Type 2',
+        risk: 'Moderate',
+        guardrail: 'Anonymous bounce rate must not rise by more than 2.5%',
+        validation: 'Run a 2-week 10% traffic A/B test on UK desktop and mobile web'
+      },
+      {
+        id: 'init_102',
+        name: '1-Click Subscription Pause & Frequency Downgrade',
+        area: 'Retention',
+        hypothesis: 'Offering a 1-to-3 month pause option inside the cancellation flow saves 18% of voluntary churners.',
+        acq: 2,
+        engRet: 5,
+        strategy: 4,
+        cltvTierId: 'tier_core_m',
+        monthlyStarts: 450,
+        effort: 'S',
+        confidence: 1.0,
+        door: 'Type 2',
+        risk: 'Low',
+        guardrail: 'At least 65% of paused subscribers must reactivate automatically',
+        validation: 'Validated via peer benchmark; ship directly to cancellation flow with cohort tracking'
+      },
+      {
+        id: 'init_103',
+        name: 'Morning Audio Briefing & Offline Commuter Mode',
+        area: 'Engagement',
+        hypothesis: 'A 10-minute narrated morning digest downloaded at 6am increases weekly active days among rail commuters.',
+        acq: 1,
+        engRet: 4,
+        strategy: 4,
+        cltvTierId: 'tier_annual',
+        monthlyStarts: 220,
+        effort: 'L',
+        confidence: 0.5,
+        door: 'Type 2',
+        risk: 'Low',
+        guardrail: 'Daily audio production must take <40 mins per morning shift',
+        validation: 'Embed an audio player inside the flagship morning newsletter for 2 weeks'
+      },
+      {
+        id: 'init_104',
+        name: 'Apple Pay & Google Pay 1-Tap Checkout',
+        area: 'Acquisition',
+        hypothesis: 'Eliminating 7-field card forms on mobile checkout lifts payment completion from 41% to 58%.',
+        acq: 5,
+        engRet: 1,
+        strategy: 5,
+        cltvTierId: 'tier_annual',
+        monthlyStarts: 950,
+        effort: 'S',
+        confidence: 1.0,
+        door: 'Type 2',
+        risk: 'Low',
+        guardrail: 'Zero increase in failed renewal webhooks across intro and full-price billing',
+        validation: 'Proven checkout pattern; release behind a 20% progressive rollout'
+      },
+      {
+        id: 'init_105',
+        name: 'Topic-Specific Alerts & Live Event Updates',
+        area: 'Engagement',
+        hypothesis: 'Allowing subscribers to follow specific beats (Westminster, Premier League) drives repeat same-day sessions without alert fatigue.',
+        acq: 2,
+        engRet: 4,
+        strategy: 4,
+        cltvTierId: 'tier_core_m',
+        monthlyStarts: 320,
+        effort: 'M',
+        confidence: 0.7,
+        door: 'Type 2',
+        risk: 'Moderate',
+        guardrail: 'Weekly push notification opt-out rate must remain under 1.0%',
+        validation: 'Test manual topic segments in existing messaging CRM for 3 weeks'
+      },
+      {
+        id: 'init_106',
+        name: 'Bespoke Multi-Year Corporate & University Licensing Portal',
+        area: 'Core Experience',
+        hypothesis: 'Self-serve domain licensing unlocks institutional B2B subscriptions across UK universities and law firms.',
+        acq: 3,
+        engRet: 2,
+        strategy: 3,
+        cltvTierId: 'tier_bundle',
+        monthlyStarts: 500,
+        effort: 'XL',
+        confidence: 0.5,
+        door: 'Type 1',
+        risk: 'High',
+        guardrail: 'Do not build custom invoicing engine until 10 institutional LOIs are signed',
+        validation: 'Launch a B2B enquiry landing page with manual concierge onboarding first'
+      }
+    ];
+
+    const RISK_PENALTIES = {
+      'Low': 1.0,
+      'Moderate': 0.88,
+      'High': 0.72
+    };
+
+    let prefs = null;
+    let initiatives = [];
+    let bubbleChart = null;
+    let draftPrefs = null; // Used inside Preferences modal before saving
+
+    // 3. INITIALISATION & LOCAL STORAGE PERSISTENCE
+    window.addEventListener('DOMContentLoaded', () => {
+      loadStateFromStorage();
+      syncAllDropdownOptions();
+      initTradeOffChart();
+      renderAll();
+      lucide.createIcons();
+    });
+
+    function loadStateFromStorage() {
+      try {
+        const savedPrefs = localStorage.getItem('siftr_prefs_v1');
+        const savedItems = localStorage.getItem('siftr_items_v1');
+        prefs = savedPrefs ? JSON.parse(savedPrefs) : JSON.parse(JSON.stringify(INDUSTRY_TEMPLATES.publishing));
+        // Migrate legacy colour keys or string-only areas to the new Coolors theme
+        const validThemes = Object.keys(AREA_COLOR_THEMES);
+        if (prefs.areas) {
+          prefs.areas = prefs.areas.map((item, i) => {
+            if (typeof item === 'string') {
+              return { name: item, color: validThemes[i % validThemes.length] };
+            }
+            if (!validThemes.includes(item.color)) {
+              return { ...item, color: validThemes[i % validThemes.length] };
+            }
+            return item;
+          });
+        }
+        initiatives = savedItems ? JSON.parse(savedItems) : JSON.parse(JSON.stringify(DEFAULT_INITIATIVES));
+      } catch (e) {
+        prefs = JSON.parse(JSON.stringify(INDUSTRY_TEMPLATES.publishing));
+        initiatives = JSON.parse(JSON.stringify(DEFAULT_INITIATIVES));
+      }
+    }
+
+    function persistState() {
+      try {
+        localStorage.setItem('siftr_prefs_v1', JSON.stringify(prefs));
+        localStorage.setItem('siftr_items_v1', JSON.stringify(initiatives));
+      } catch (e) {
+        // Ignore storage quota errors
+      }
+    }
+
+    function getAreaNames() {
+      return prefs.areas.map(a => typeof a === 'string' ? a : a.name);
+    }
+
+    function resolveAreaBadgeClass(areaName) {
+      const found = prefs.areas.find(a => (typeof a === 'string' ? a : a.name) === areaName);
+      const colorKey = found && found.color ? found.color : 'slate';
+      return (AREA_COLOR_THEMES[colorKey] || AREA_COLOR_THEMES.slate).badge;
+    }
+
+    function syncAllDropdownOptions() {
+      const areaNames = getAreaNames();
+
+      // Filter Area Dropdown (includes quick "+ Manage Areas..." trigger)
+      const filterArea = document.getElementById('filterArea');
+      const prevFilter = filterArea.value;
+      filterArea.innerHTML = `<option value="ALL">All Product Areas</option>` +
+        areaNames.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('') +
+        `<option value="__MANAGE__">+ Manage Product Areas...</option>`;
+      if (areaNames.includes(prevFilter)) {
+        filterArea.value = prevFilter;
+      } else {
+        filterArea.value = 'ALL';
+      }
+
+      // Modal Product Area Dropdown
+      document.getElementById('fieldArea').innerHTML = areaNames
+        .map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+
+      // Modal Acquisition Dropdown
+      document.getElementById('fieldAcq').innerHTML = prefs.acqBuckets
+        .map(b => `<option value="${b.level}">${escapeHtml(b.label)}</option>`).join('');
+
+      // Modal Engagement & Retention Dropdown
+      document.getElementById('fieldEngRet').innerHTML = prefs.engRetBuckets
+        .map(b => `<option value="${b.level}">${escapeHtml(b.label)}</option>`).join('');
+
+      // Modal CLTV Tier Dropdown
+      document.getElementById('fieldCltvTier').innerHTML = prefs.cltvTiers
+        .map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)} (£${t.cltv.toLocaleString('en-GB')} CLTV)</option>`).join('');
+
+      // Modal Effort Dropdown
+      document.getElementById('fieldEffort').innerHTML = prefs.effortSizes
+        .map(e => `<option value="${escapeHtml(e.code)}">${escapeHtml(e.label)}</option>`).join('');
+    }
+
+    function handleFilterAreaChange(selectEl) {
+      if (selectEl.value === '__MANAGE__') {
+        selectEl.value = 'ALL';
+        renderAll();
+        openPreferencesModal('areas');
+        return;
+      }
+      renderAll();
+    }
+
+    // 4. CORE SCORING & CLTV MODEL ENGINE
+    function resolveCltvTier(tierId) {
+      return prefs.cltvTiers.find(t => t.id === tierId) || prefs.cltvTiers[0] || { id: 'default', name: 'Standard', cltv: 200 };
+    }
+
+    function resolveEffortObj(code) {
+      return prefs.effortSizes.find(e => e.code === code) || prefs.effortSizes[2] || { code: 'M', label: 'M (3–4 Sprints)', weight: 2.0, numeric: 4 };
+    }
+
+    function scoreInitiative(item) {
+      const tierObj = resolveCltvTier(item.cltvTierId);
+      const effortObj = resolveEffortObj(item.effort);
+
+      const grossAnnualCltv = (tierObj.cltv || 0) * (item.monthlyStarts || 0) * 12;
+      const adjustedAnnualCltv = grossAnnualCltv * (item.confidence || 0.7);
+
+      // Weighted rubric components (0–5 scale)
+      const acqPoints = (item.acq || 0) * 6.5;
+      const engRetPoints = (item.engRet || 0) * 6.5;
+      const stratPoints = (item.strategy || 0) * 4.5;
+      const cltvBonus = Math.min(24, Math.log10(Math.max(10000, adjustedAnnualCltv)) * 3.6 - 12);
+
+      const rawValue = (acqPoints + engRetPoints + stratPoints + Math.max(0, cltvBonus)) * (item.confidence || 0.7);
+      const riskMultiplier = RISK_PENALTIES[item.risk] || 1.0;
+      const doorFactor = item.door === 'Type 1' ? 0.92 : 1.0;
+
+      const rawScore = (rawValue / Math.pow(effortObj.weight, 0.65)) * riskMultiplier * doorFactor;
+      const finalScore = Math.max(4, Math.min(99, Math.round(rawScore)));
+
+      // Action Gate Verdict (Coolors Palette: #70877f Sage, #ef946c Coral, #454372 Plum, #c4a77d Sand)
+      let verdict = 'Build Now';
+      let badgeClass = 'bg-sage-100 text-sage-700 border-[#70877f]/45';
+      let badgeIcon = 'rocket';
+      let dotColor = '#70877f';
+
+      if ((item.confidence <= 0.5 || (item.door === 'Type 1' && item.confidence < 0.85)) && finalScore >= 35) {
+        verdict = 'Prototype / Test First';
+        badgeClass = 'bg-coral-100 text-[#2f2963] border-[#ef946c]/70';
+        badgeIcon = 'flask-conical';
+        dotColor = '#ef946c';
+      } else if (finalScore >= 52) {
+        verdict = 'Build Now';
+        badgeClass = 'bg-sage-100 text-sage-700 border-[#70877f]/45';
+        badgeIcon = 'rocket';
+        dotColor = '#70877f';
+      } else if (finalScore >= 34) {
+        verdict = 'Defer';
+        badgeClass = 'bg-plum-100 text-[#454372] border-[#454372]/35';
+        badgeIcon = 'clock';
+        dotColor = '#454372';
+      } else {
+        verdict = 'Do Not Do';
+        badgeClass = 'bg-sand-100 text-sand-600 border-[#c4a77d]/60';
+        badgeIcon = 'x-circle';
+        dotColor = '#c4a77d';
+      }
+
+      return {
+        ...item,
+        tierObj,
+        effortObj,
+        grossAnnualCltv,
+        adjustedAnnualCltv,
+        score: finalScore,
+        verdict,
+        badgeClass,
+        badgeIcon,
+        dotColor
+      };
+    }
+
+    function formatGBP(amount) {
+      if (amount >= 1000000) {
+        return '£' + (amount / 1000000).toFixed(2) + 'm';
+      } else if (amount >= 1000) {
+        return '£' + Math.round(amount / 1000) + 'k';
+      }
+      return '£' + Math.round(amount);
+    }
+
+    // 5. RENDERING PIPELINE
+    function getFilteredScored() {
+      const searchQ = document.getElementById('filterSearch').value.trim().toLowerCase();
+      const areaFilter = document.getElementById('filterArea').value;
+      const verdictFilter = document.getElementById('filterVerdict').value;
+
+      return initiatives
+        .map(scoreInitiative)
+        .filter(item => {
+          const matchSearch = !searchQ ||
+            item.name.toLowerCase().includes(searchQ) ||
+            item.hypothesis.toLowerCase().includes(searchQ) ||
+            (item.guardrail && item.guardrail.toLowerCase().includes(searchQ));
+          const matchArea = areaFilter === 'ALL' || item.area === areaFilter;
+          const matchVerdict = verdictFilter === 'ALL' || item.verdict === verdictFilter;
+          return matchSearch && matchArea && matchVerdict;
+        });
+    }
+
+    function renderAll() {
+      persistState();
+      updateKPIs();
+      renderMatrixTable();
+      updateTradeOffChart();
+      populateCompareSelectors();
+      renderHeadToHead();
+      renderDecisionBrief();
+      lucide.createIcons();
+    }
+
+    function updateKPIs() {
+      const items = getFilteredScored().sort((a, b) => b.score - a.score);
+
+      if (items.length === 0) {
+        document.getElementById('kpiTopName').innerText = 'No initiatives in view';
+        document.getElementById('kpiTopScore').innerText = 'Score: —';
+        document.getElementById('kpiTopArea').innerText = 'Add or reset filter';
+        document.getElementById('kpiTotalAnnualValue').innerText = '£0.00m';
+        document.getElementById('kpiBuildNowCount').innerText = '0';
+        document.getElementById('kpiPrototypeCount').innerText = '0';
+        return;
+      }
+
+      const top = items[0];
+      document.getElementById('kpiTopName').innerText = top.name;
+      document.getElementById('kpiTopScore').innerText = `Score: ${top.score}`;
+      document.getElementById('kpiTopArea').innerText = top.area;
+
+      const totalCltv = items.reduce((sum, i) => sum + i.adjustedAnnualCltv, 0);
+      const buildNow = items.filter(i => i.verdict === 'Build Now').length;
+      const prototype = items.filter(i => i.verdict === 'Prototype / Test First').length;
+
+      document.getElementById('kpiTotalAnnualValue').innerText = formatGBP(totalCltv);
+      document.getElementById('kpiBuildNowCount').innerText = buildNow;
+      document.getElementById('kpiPrototypeCount').innerText = prototype;
+    }
+
+    function renderMatrixTable() {
+      const tbody = document.getElementById('matrixTableBody');
+      const sortMode = document.getElementById('sortSelector').value;
+      let items = getFilteredScored();
+
+      if (sortMode === 'score_desc') items.sort((a, b) => b.score - a.score);
+      else if (sortMode === 'cltv_desc') items.sort((a, b) => b.adjustedAnnualCltv - a.adjustedAnnualCltv);
+      else if (sortMode === 'effort_asc') items.sort((a, b) => a.effortObj.numeric - b.effortObj.numeric);
+      else if (sortMode === 'confidence_desc') items.sort((a, b) => b.confidence - a.confidence);
+
+      if (items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-12 text-center text-sage-700 text-xs">
+              No initiatives match your filter—or the table has been cleared. Click <strong>+ Add Initiative</strong> or <strong>Import CSV</strong> to add product bets.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      const areaNames = getAreaNames();
+
+      tbody.innerHTML = items.map((item, idx) => {
+        const rankLabel = idx === 0 ? `#1 Top` : `#${idx + 1}`;
+        const rankClass = idx === 0
+          ? 'text-[10px] font-extrabold text-[#2f2963] bg-coral-100 border border-[#ef946c]/60 px-1.5 py-0.5 rounded'
+          : 'text-[11px] font-mono font-bold text-sage-700/70';
+
+        const areaBadgeClass = resolveAreaBadgeClass(item.area);
+
+        const riskBadgeColor = item.risk === 'High'
+          ? 'text-coral-600 bg-coral-50 border-[#ef946c]/60'
+          : (item.risk === 'Moderate' ? 'text-sand-600 bg-sand-100 border-[#c4a77d]/60' : 'text-sage-700 bg-sage-50 border-[#70877f]/35');
+
+        const areaOptions = areaNames.map(a =>
+          `<option value="${escapeHtml(a)}" ${item.area === a ? 'selected' : ''}>${escapeHtml(a)}</option>`
+        ).join('') + `<option value="__MANAGE__">+ Manage Areas...</option>`;
+
+        const acqOptions = prefs.acqBuckets.map(b =>
+          `<option value="${b.level}" ${item.acq === b.level ? 'selected' : ''}>${escapeHtml(b.label.replace(/^(\d+)\s—\s/, '$1: '))}</option>`
+        ).join('');
+
+        const cltvOptions = prefs.cltvTiers.map(t =>
+          `<option value="${escapeHtml(t.id)}" ${item.cltvTierId === t.id ? 'selected' : ''}>${escapeHtml(t.name)} (£${t.cltv})</option>`
+        ).join('');
+
+        const engRetOptions = prefs.engRetBuckets.map(b =>
+          `<option value="${b.level}" ${item.engRet === b.level ? 'selected' : ''}>${escapeHtml(b.label.replace(/^(\d+)\s—\s/, '$1: '))}</option>`
+        ).join('');
+
+        const effortOptions = prefs.effortSizes.map(e =>
+          `<option value="${escapeHtml(e.code)}" ${item.effort === e.code ? 'selected' : ''}>${escapeHtml(e.label)}</option>`
+        ).join('');
+
+        return `
+          <tr class="hover:bg-sand-50/90 transition group">
+            <!-- Col 1: Rank + Siftr Score -->
+            <td class="py-3.5 pl-4 pr-2 align-top text-center">
+              <div class="flex flex-col items-center gap-1.5">
+                <span class="${rankClass}">${rankLabel}</span>
+                <span class="inline-flex items-center justify-center w-10 h-8 rounded-lg text-xs font-extrabold font-mono bg-[#2f2963] text-white shadow-2xs">
+                  ${item.score}
+                </span>
+              </div>
+            </td>
+
+            <!-- Col 2: Title, Editable Product Area Pill, Hypothesis, Guardrail & Validation Tags -->
+            <td class="py-3.5 px-2.5 align-top">
+              <div class="space-y-1.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <button type="button" onclick="openInitiativeModal('${item.id}')" class="text-left font-bold text-[#2f2963] hover:text-[#454372] transition leading-snug">
+                    ${escapeHtml(item.name)}
+                  </button>
+                  <select aria-label="Product Area" onchange="inlineUpdateArea('${item.id}', this)" class="text-[11px] font-semibold px-2 py-0.5 rounded-md border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#454372] ${areaBadgeClass}">
+                    ${areaOptions}
+                  </select>
+                </div>
+
+                <p class="text-xs text-sage-700 leading-relaxed">
+                  <span class="font-semibold text-[#2f2963]">Hypothesis:</span> ${escapeHtml(item.hypothesis)}
+                </p>
+
+                <!-- Scannable Guardrail & Thin-Slice Validation Metadata -->
+                <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <button type="button" onclick="openInitiativeModal('${item.id}')" title="Click to edit Counter-Metric Guardrail" class="inline-flex items-center gap-1 text-left text-[11px] bg-plum-50 hover:bg-plum-100 text-[#2f2963] border border-[#454372]/20 rounded-md px-2 py-0.5 transition max-w-full">
+                    <i data-lucide="shield-alert" class="w-3 h-3 text-[#ef946c] shrink-0"></i>
+                    <span class="truncate"><strong class="text-[#2f2963]">Guardrail:</strong> ${escapeHtml(item.guardrail || 'Add guardrail')}</span>
+                  </button>
+
+                  ${item.validation ? `
+                    <button type="button" onclick="openInitiativeModal('${item.id}')" title="Click to edit Validation / Thin-Slice Step" class="inline-flex items-center gap-1 text-left text-[11px] bg-sand-50 hover:bg-sand-100 text-sage-700 border border-sand-200 rounded-md px-2 py-0.5 transition max-w-full">
+                      <i data-lucide="flask-conical" class="w-3 h-3 text-[#454372] shrink-0"></i>
+                      <span class="truncate"><strong class="text-[#2f2963]">Test:</strong> ${escapeHtml(item.validation)}</span>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            </td>
+
+            <!-- Col 3: Commercial Upside (Acquisition + CLTV Tier + Computed £/yr) -->
+            <td class="py-3.5 px-2 align-top">
+              <div class="space-y-1.5 text-[11px]">
+                <select aria-label="Acquisition Volume" onchange="inlineUpdateAcq('${item.id}', parseInt(this.value, 10))" class="w-full truncate bg-white border border-sand-200 rounded-md px-2 py-1 font-semibold text-[#2f2963] focus:outline-none focus:border-[#454372]">
+                  ${acqOptions}
+                </select>
+                <select aria-label="Subscriber CLTV Tier" onchange="inlineUpdateField('${item.id}', 'cltvTierId', this.value)" class="w-full truncate bg-white border border-sand-200 rounded-md px-2 py-1 font-medium text-sage-700 focus:outline-none focus:border-[#454372]">
+                  ${cltvOptions}
+                </select>
+                <div class="flex items-center justify-between px-0.5 pt-0.5">
+                  <span class="font-extrabold font-mono text-[#454372] text-xs">${formatGBP(item.adjustedAnnualCltv)}<span class="font-normal text-sage-700">/yr</span></span>
+                  <span class="text-[10px] text-sage-700">${item.monthlyStarts.toLocaleString('en-GB')}/mo</span>
+                </div>
+              </div>
+            </td>
+
+            <!-- Col 4: Engagement & Retention + Strategic Fit -->
+            <td class="py-3.5 px-2 align-top">
+              <div class="space-y-1.5 text-[11px]">
+                <select aria-label="Engagement and Retention" onchange="inlineUpdateField('${item.id}', 'engRet', parseInt(this.value, 10))" class="w-full truncate bg-white border border-sand-200 rounded-md px-2 py-1 font-semibold text-[#2f2963] focus:outline-none focus:border-[#454372]">
+                  ${engRetOptions}
+                </select>
+                <select aria-label="Strategic Fit" onchange="inlineUpdateField('${item.id}', 'strategy', parseInt(this.value, 10))" class="w-full truncate bg-white border border-sand-200 rounded-md px-2 py-1 font-medium text-sage-700 focus:outline-none focus:border-[#454372]">
+                  <option value="0" ${item.strategy === 0 ? 'selected' : ''}>Strat 0: Off-strategy</option>
+                  <option value="1" ${item.strategy === 1 ? 'selected' : ''}>Strat 1: Tangential</option>
+                  <option value="2" ${item.strategy === 2 ? 'selected' : ''}>Strat 2: Secondary OKR</option>
+                  <option value="3" ${item.strategy === 3 ? 'selected' : ''}>Strat 3: Team goal</option>
+                  <option value="4" ${item.strategy === 4 ? 'selected' : ''}>Strat 4: Annual priority</option>
+                  <option value="5" ${item.strategy === 5 ? 'selected' : ''}>Strat 5: Top pillar</option>
+                </select>
+              </div>
+            </td>
+
+            <!-- Col 5: Effort & Evidence Confidence -->
+            <td class="py-3.5 px-2 align-top">
+              <div class="space-y-1.5 text-[11px]">
+                <select aria-label="Delivery Effort" onchange="inlineUpdateField('${item.id}', 'effort', this.value)" class="w-full truncate bg-white border border-sand-200 rounded-md px-2 py-1 font-semibold text-[#2f2963] focus:outline-none focus:border-[#454372]">
+                  ${effortOptions}
+                </select>
+                <select aria-label="Evidence Confidence" onchange="inlineUpdateField('${item.id}', 'confidence', parseFloat(this.value))" class="w-full truncate bg-white border border-sand-200 rounded-md px-2 py-1 font-medium text-sage-700 focus:outline-none focus:border-[#454372]">
+                  <option value="0.5" ${item.confidence === 0.5 ? 'selected' : ''}>0.5× Gut feel</option>
+                  <option value="0.7" ${item.confidence === 0.7 ? 'selected' : ''}>0.7× Qual research</option>
+                  <option value="0.85" ${item.confidence === 0.85 ? 'selected' : ''}>0.85× Analogous data</option>
+                  <option value="1" ${item.confidence === 1.0 ? 'selected' : ''}>1.0× Validated A/B</option>
+                </select>
+              </div>
+            </td>
+
+            <!-- Col 6: Door Type, Risk & Verdict Badge -->
+            <td class="py-3.5 px-2 align-top">
+              <div class="space-y-1.5">
+                <div class="flex items-center gap-1">
+                  <select aria-label="Reversibility Door" onchange="inlineUpdateField('${item.id}', 'door', this.value)" class="bg-white border border-sand-200 rounded px-1.5 py-0.5 text-[10px] font-semibold text-[#2f2963] focus:outline-none focus:border-[#454372]">
+                    <option value="Type 2" ${item.door === 'Type 2' ? 'selected' : ''}>Type 2 Door</option>
+                    <option value="Type 1" ${item.door === 'Type 1' ? 'selected' : ''}>Type 1 Door</option>
+                  </select>
+                  <select aria-label="Guardrail Risk" onchange="inlineUpdateField('${item.id}', 'risk', this.value)" class="rounded px-1.5 py-0.5 text-[10px] font-bold border focus:outline-none ${riskBadgeColor}">
+                    <option value="Low" ${item.risk === 'Low' ? 'selected' : ''}>Low Risk</option>
+                    <option value="Moderate" ${item.risk === 'Moderate' ? 'selected' : ''}>Med Risk</option>
+                    <option value="High" ${item.risk === 'High' ? 'selected' : ''}>High Risk</option>
+                  </select>
+                </div>
+
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border ${item.badgeClass}">
+                  <i data-lucide="${item.badgeIcon}" class="w-3 h-3 shrink-0"></i>
+                  <span class="truncate">${item.verdict}</span>
+                </span>
+              </div>
+            </td>
+
+            <!-- Col 7: Edit / Delete -->
+            <td class="py-3.5 pl-1 pr-3 align-top text-right">
+              <div class="inline-flex items-center gap-0.5">
+                <button type="button" onclick="openInitiativeModal('${item.id}')" title="Edit full details" class="p-1.5 rounded-lg text-sage-700 hover:text-[#2f2963] hover:bg-plum-50 transition">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                </button>
+                <button type="button" onclick="removeInitiative('${item.id}')" title="Delete initiative" class="p-1.5 rounded-lg text-sage-700 hover:text-coral-600 hover:bg-coral-50 transition">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function inlineUpdateArea(id, selectEl) {
+      if (selectEl.value === '__MANAGE__') {
+        renderAll();
+        openPreferencesModal('areas');
+        return;
+      }
+      inlineUpdateField(id, 'area', selectEl.value);
+    }
+
+    function inlineUpdateField(id, field, value) {
+      const target = initiatives.find(i => i.id === id);
+      if (!target) return;
+      target[field] = value;
+      renderAll();
+    }
+
+    function inlineUpdateAcq(id, level) {
+      const target = initiatives.find(i => i.id === id);
+      if (!target) return;
+      target.acq = level;
+      const bucket = prefs.acqBuckets.find(b => b.level === level);
+      if (bucket && typeof bucket.defaultStarts === 'number') {
+        target.monthlyStarts = bucket.defaultStarts;
+      }
+      renderAll();
+    }
+
+    // 6. 2x2 VISUAL TRADE-OFF MAP (CHART.JS)
+    function initTradeOffChart() {
+      const ctx = document.getElementById('tradeOffChart').getContext('2d');
+      bubbleChart = new Chart(ctx, {
+        type: 'bubble',
+        data: { datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#2f2963',
+              titleColor: '#fbfaf8',
+              bodyColor: '#ebe0cf',
+              borderColor: '#454372',
+              borderWidth: 1,
+              padding: 11,
+              callbacks: {
+                title: (items) => items[0].raw.ref.name,
+                label: (ctx) => {
+                  const r = ctx.raw.ref;
+                  return [
+                    `Verdict: ${r.verdict} (Score: ${r.score}/100)`,
+                    `Annualised Value: ${formatGBP(r.adjustedAnnualCltv)}/yr (${r.confidence}× conf.)`,
+                    `Rubric: Acq ${r.acq}/5 · Eng/Ret ${r.engRet}/5 · Strat ${r.strategy}/5`,
+                    `Delivery: ${r.effortObj.label} · ${r.door} Door · ${r.risk} Risk`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              min: 0,
+              max: 11,
+              grid: { color: '#ebe0cf' },
+              ticks: { color: '#566962', font: { size: 10 } },
+              title: {
+                display: true,
+                text: 'Delivery Effort & Guardrail Risk (Left = Smaller & Safer)',
+                color: '#2f2963',
+                font: { size: 11, weight: 'bold' }
+              }
+            },
+            y: {
+              min: 0,
+              max: 11,
+              grid: { color: '#ebe0cf' },
+              ticks: { color: '#566962', font: { size: 10 } },
+              title: {
+                display: true,
+                text: 'Strategic & Commercial Value (Top = Higher Customer & Revenue Impact)',
+                color: '#2f2963',
+                font: { size: 11, weight: 'bold' }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateTradeOffChart() {
+      if (!bubbleChart) return;
+      const items = getFilteredScored();
+      const maxCltv = Math.max(500000, ...items.map(i => i.adjustedAnnualCltv));
+
+      const points = items.map(item => {
+        const riskBoost = item.risk === 'High' ? 2.2 : (item.risk === 'Moderate' ? 1.0 : 0);
+        const xVal = Math.min(10.5, parseFloat((item.effortObj.numeric * 0.8 + riskBoost).toFixed(1)));
+        const yVal = Math.min(10.5, parseFloat((((item.acq + item.engRet + item.strategy) / 15) * 10 * item.confidence + 1.2).toFixed(1)));
+        const radius = 8 + Math.min(18, (item.adjustedAnnualCltv / maxCltv) * 18);
+
+        return {
+          x: xVal,
+          y: yVal,
+          r: radius,
+          ref: item,
+          backgroundColor: item.dotColor + 'cc',
+          borderColor: item.dotColor,
+          borderWidth: 2
+        };
+      });
+
+      bubbleChart.data.datasets = [{ data: points }];
+      bubbleChart.update();
+    }
+
+    // 7. HEAD-TO-HEAD COMPARISON
+    function populateCompareSelectors() {
+      const items = getFilteredScored().sort((a, b) => b.score - a.score);
+      const selA = document.getElementById('compareA');
+      const selB = document.getElementById('compareB');
+
+      const prevA = selA.value;
+      const prevB = selB.value;
+
+      const html = items.map(i => `<option value="${i.id}">${escapeHtml(i.name)} (Score: ${i.score})</option>`).join('');
+      selA.innerHTML = html;
+      selB.innerHTML = html;
+
+      if (items.some(i => i.id === prevA)) selA.value = prevA;
+      else if (items.length > 0) selA.value = items[0].id;
+
+      if (items.some(i => i.id === prevB)) selB.value = prevB;
+      else if (items.length > 1) selB.value = items[1].id;
+    }
+
+    function renderHeadToHead() {
+      const box = document.getElementById('headToHeadOutput');
+      const items = getFilteredScored();
+      const a = items.find(i => i.id === document.getElementById('compareA').value);
+      const b = items.find(i => i.id === document.getElementById('compareB').value);
+
+      if (!a || !b) {
+        box.innerHTML = `<p class="text-xs text-slate-500">Add at least two initiatives to compare them side by side.</p>`;
+        return;
+      }
+
+      const winner = a.score >= b.score ? a : b;
+      const loser = a.score >= b.score ? b : a;
+
+      box.innerHTML = `
+        <div class="grid grid-cols-2 gap-2.5 text-xs">
+          <div class="p-3 rounded-xl bg-sand-50 border ${a.score >= b.score ? 'border-[#ef946c] ring-1 ring-[#ef946c]/40' : 'border-sand-200'}">
+            <span class="text-[10px] font-bold uppercase text-sage-700 block">Contender A</span>
+            <div class="font-bold text-[#2f2963] line-clamp-2 mt-0.5 min-h-[2.4em]">${escapeHtml(a.name)}</div>
+            <div class="mt-2.5 space-y-1 text-[11px] text-sage-700">
+              <div>Siftr Score: <strong class="font-mono text-[#2f2963]">${a.score}/100</strong></div>
+              <div>Annual Value: <strong class="text-[#454372] font-mono">${formatGBP(a.adjustedAnnualCltv)}/yr</strong></div>
+              <div>Effort: <strong>${escapeHtml(a.effortObj.label)}</strong></div>
+              <div>Evidence: <strong>${a.confidence}×</strong></div>
+              <div>Door / Risk: <strong>${a.door} · ${a.risk}</strong></div>
+            </div>
+          </div>
+
+          <div class="p-3 rounded-xl bg-sand-50 border ${b.score > a.score ? 'border-[#ef946c] ring-1 ring-[#ef946c]/40' : 'border-sand-200'}">
+            <span class="text-[10px] font-bold uppercase text-sage-700 block">Contender B</span>
+            <div class="font-bold text-[#2f2963] line-clamp-2 mt-0.5 min-h-[2.4em]">${escapeHtml(b.name)}</div>
+            <div class="mt-2.5 space-y-1 text-[11px] text-sage-700">
+              <div>Siftr Score: <strong class="font-mono text-[#2f2963]">${b.score}/100</strong></div>
+              <div>Annual Value: <strong class="text-[#454372] font-mono">${formatGBP(b.adjustedAnnualCltv)}/yr</strong></div>
+              <div>Effort: <strong>${escapeHtml(b.effortObj.label)}</strong></div>
+              <div>Evidence: <strong>${b.confidence}×</strong></div>
+              <div>Door / Risk: <strong>${b.door} · ${b.risk}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-plum-50 border border-[#454372]/20 text-xs text-sage-700 leading-relaxed">
+          <strong class="text-[#2f2963] block mb-1">Trade-Off Synthesis:</strong>
+          Prioritising <strong>${escapeHtml(winner.name)}</strong> over <strong>${escapeHtml(loser.name)}</strong> captures 
+          <span class="font-mono font-bold text-[#454372]">${formatGBP(winner.adjustedAnnualCltv)}/yr</span> in confidence-adjusted subscriber value and leads by 
+          <span class="font-bold text-[#2f2963]">${winner.score - loser.score} points</span>. 
+          To de-risk <em>${escapeHtml(loser.name)}</em> without committing full build capacity, run: <span class="underline decoration-[#ef946c]">${escapeHtml(loser.validation || 'a lightweight customer prototype or holdout test')}</span>.
+        </div>
+      `;
+    }
+
+    // 8. DECISION BRIEF & TRADE-OFF LOG
+    function renderDecisionBrief() {
+      const container = document.getElementById('decisionBriefBody');
+      const items = getFilteredScored().sort((a, b) => b.score - a.score);
+
+      if (items.length < 2) {
+        container.innerHTML = `<p class="text-xs text-sage-700">Add at least two initiatives to generate a trade-off decision brief.</p>`;
+        return;
+      }
+
+      const top = items[0];
+      const runnerUp = items[1];
+      const prototypeItems = items.filter(i => i.verdict === 'Prototype / Test First');
+
+      container.innerHTML = `
+        <!-- Even-Over Statement -->
+        <div class="p-5 rounded-xl bg-plum-50 border border-[#454372]/25">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-[#454372] block mb-1.5">Executive "Even-Over" Priority Declaration</span>
+          <p class="text-base text-[#2f2963] leading-relaxed">
+            "We prioritise <strong class="text-[#2f2963] underline decoration-[#ef946c] decoration-2 underline-offset-4">${escapeHtml(top.name)}</strong> (${escapeHtml(top.area)})
+            <span class="inline-block px-2 py-0.5 mx-1 rounded bg-[#2f2963] text-[#ef946c] text-xs font-extrabold uppercase tracking-wide">EVEN OVER</span>
+            <strong>${escapeHtml(runnerUp.name)}</strong> (${escapeHtml(runnerUp.area)}), because it delivers an estimated 
+            <strong class="font-mono text-[#2f2963]">${formatGBP(top.adjustedAnnualCltv)}/yr</strong> at <strong>${top.confidence}×</strong> evidence confidence with <strong>${escapeHtml(top.effortObj.label)}</strong> effort."
+          </p>
+          <div class="mt-3 pt-3 border-t border-[#454372]/15 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-sage-700">
+            <div><strong class="text-[#2f2963]">Counter-Metric Guardrail:</strong> ${escapeHtml(top.guardrail || 'Monitor core subscriber retention and experience metrics')}</div>
+            <div><strong class="text-[#2f2963]">Hypothesis:</strong> ${escapeHtml(top.hypothesis)}</div>
+          </div>
+        </div>
+
+        <!-- Guardrails & Validation Log -->
+        <div class="space-y-2.5">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-[#2f2963]">Sequencing, Counter-Metric Guardrails &amp; Thin-Slice Validation Plan</h4>
+          <div class="divide-y divide-sand-200 border border-sand-200 rounded-xl overflow-hidden bg-white">
+            ${items.map((it, i) => `
+              <div class="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <div class="space-y-0.5">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-[#c4a77d]">#${i + 1}</span>
+                    <span class="font-bold text-[#2f2963]">${escapeHtml(it.name)}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${it.badgeClass}">${it.verdict}</span>
+                  </div>
+                  <p class="text-sage-700 pl-6"><strong class="text-[#2f2963]">Counter-Metric Guardrail:</strong> ${escapeHtml(it.guardrail || 'No degradation to core subscriber experience')}</p>
+                </div>
+                <div class="pl-6 sm:pl-0 sm:text-right shrink-0">
+                  <span class="text-[11px] font-semibold text-[#2f2963] block">Validation step: ${escapeHtml(it.validation || 'Run lightweight A/B holdout')}</span>
+                  <span class="text-[11px] font-mono text-sage-700">${formatGBP(it.adjustedAnnualCltv)}/yr · ${escapeHtml(it.effortObj.label)}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        ${prototypeItems.length > 0 ? `
+          <div class="p-4 rounded-xl bg-coral-50 border border-[#ef946c]/50 text-xs text-[#2f2963]">
+            <strong>Discovery Gate Notice:</strong> ${prototypeItems.length} initiative(s) (${prototypeItems.map(p => escapeHtml(p.name)).join(', ')}) are flagged as <strong>Prototype / Test First</strong> due to low evidence confidence (0.5×) or Type 1 irreversibility. Run a thin-slice experiment before committing full engineering capacity.
+          </div>
+        ` : ''}
+      `;
+    }
+
+    // 9. CSV IMPORT & SMART COLUMN MAPPING ENGINE
+    const SIFTR_SCHEMA_FIELDS = [
+      { key: 'name', label: 'Initiative Title *', aliases: ['title', 'name', 'initiative', 'feature', 'project', 'idea', 'bet'] },
+      { key: 'area', label: 'Product Area', aliases: ['product area', 'area', 'squad', 'team', 'stream', 'pillar', 'domain'] },
+      { key: 'hypothesis', label: 'Impact Hypothesis', aliases: ['hypothesis', 'description', 'rationale', 'summary', 'impact description', 'notes', 'why'] },
+      { key: 'acq', label: 'Acquisition (0–5)', aliases: ['acquisition', 'acq', 'starts', 'acquisition volume', 'acquisition impact', 'conversion'] },
+      { key: 'cltvTier', label: 'CLTV Tier / Cohort', aliases: ['cltv tier', 'subscriber tier', 'tier', 'cohort', 'mix', 'plan', 'cltv'] },
+      { key: 'monthlyStarts', label: 'Monthly Starts / Saves', aliases: ['monthly starts', 'monthly', 'volume', 'starts/mo', 'saves', 'subscribers'] },
+      { key: 'engRet', label: 'Engagement / Retention (0–5)', aliases: ['engagement', 'retention', 'eng/ret', 'engagement & retention', 'habit', 'churn'] },
+      { key: 'strategy', label: 'Strategic Fit (0–5)', aliases: ['strategic fit', 'strategic alignment', 'strategy', 'alignment', 'okr'] },
+      { key: 'effort', label: 'Effort (XS–XL)', aliases: ['effort', 't-shirt', 'size', 'sizing', 'delivery effort', 'cost', 'complexity'] },
+      { key: 'confidence', label: 'Confidence (0.5–1.0)', aliases: ['confidence', 'evidence', 'evidence confidence', 'proof', 'certainty'] },
+      { key: 'door', label: 'Reversibility Door', aliases: ['door', 'reversibility', 'type', 'door type'] },
+      { key: 'risk', label: 'Guardrail Risk', aliases: ['risk', 'guardrail risk', 'downside'] },
+      { key: 'guardrail', label: 'Counter-Metric Guardrail', aliases: ['guardrail', 'counter-metric', 'counter metric', 'counter-metric guardrail', 'protect'] },
+      { key: 'validation', label: 'Validation / Thin-Slice', aliases: ['validation', 'thin-slice', 'thin slice', 'test', 'experiment', 'spike'] }
+    ];
+
+    let parsedCsvHeaders = [];
+    let parsedCsvRows = [];
+    let csvColumnMapping = {};
+    let mappedPreviewRecords = [];
+
+    function openCsvImportModal() {
+      document.getElementById('csvFileInput').value = '';
+      document.getElementById('csvFileNameLabel').innerText = 'or paste text on the right';
+      document.getElementById('csvRawTextarea').value = '';
+      document.getElementById('csvMappingSection').classList.add('hidden');
+      document.getElementById('csvPreviewSection').classList.add('hidden');
+      document.getElementById('csvConfirmImportBtn').disabled = true;
+      parsedCsvHeaders = [];
+      parsedCsvRows = [];
+      csvColumnMapping = {};
+      mappedPreviewRecords = [];
+      document.getElementById('csvImportModal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeCsvImportModal() {
+      document.getElementById('csvImportModal').classList.add('hidden');
+    }
+
+    function downloadCsvTemplate() {
+      const headers = [
+        'Title', 'Product Area', 'Hypothesis', 'Acquisition', 'CLTV Tier',
+        'Monthly Starts', 'Engagement', 'Strategic Fit', 'Effort',
+        'Confidence', 'Door', 'Risk', 'Guardrail', 'Validation'
+      ];
+      const sampleRows = [
+        [
+          'Newsletter Referral Rewards',
+          'Acquisition',
+          'Offering subscribers 1 free month per 3 referred friends drives high-intent organic starts',
+          '3',
+          prefs.cltvTiers[0] ? prefs.cltvTiers[0].name : 'Core Monthly Digital',
+          '550',
+          '2',
+          '4',
+          'S',
+          '0.85',
+          'Type 2',
+          'Low',
+          'Referral fraud and duplicate accounts must remain under 2%',
+          'Run a 2-week manual cohort test on our flagship morning newsletter'
+        ],
+        [
+          'Annual Plan Auto-Renewal Reminder & Gift Pass',
+          'Retention',
+          'Sending a value recap plus a shareable 14-day guest pass 21 days before renewal lifts retention by 4%',
+          '1',
+          prefs.cltvTiers[1] ? prefs.cltvTiers[1].name : 'Annual Digital Sub',
+          '240',
+          '4',
+          '4',
+          'XS',
+          '0.7',
+          'Type 2',
+          'Low',
+          'Must not increase early pre-renewal cancellations',
+          'A/B test value-recap email template on next 2,000 renewing subscribers'
+        ]
+      ];
+
+      const csvLines = [
+        headers.join(','),
+        ...sampleRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ];
+
+      const blob = new Blob([csvLines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'siftr-import-template.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Downloaded siftr-import-template.csv');
+    }
+
+    function handleCsvFileUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      document.getElementById('csvFileNameLabel').innerText = file.name;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result || '';
+        document.getElementById('csvRawTextarea').value = content;
+        parseCsvInput(content);
+      };
+      reader.readAsText(file);
+    }
+
+    // RFC-4180 compliant CSV parser handling quoted fields, commas, and newlines
+    function parseCsvText(text) {
+      const rows = [];
+      let currentRow = [];
+      let currentCell = '';
+      let insideQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const nextCh = text[i + 1];
+
+        if (insideQuotes) {
+          if (ch === '"' && nextCh === '"') {
+            currentCell += '"';
+            i++;
+          } else if (ch === '"') {
+            insideQuotes = false;
+          } else {
+            currentCell += ch;
+          }
+        } else {
+          if (ch === '"') {
+            insideQuotes = true;
+          } else if (ch === ',') {
+            currentRow.push(currentCell.trim());
+            currentCell = '';
+          } else if (ch === '\r' && nextCh === '\n') {
+            currentRow.push(currentCell.trim());
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = '';
+            i++;
+          } else if (ch === '\n' || ch === '\r') {
+            currentRow.push(currentCell.trim());
+            rows.push(currentRow);
+            currentRow = [];
+            currentCell = '';
+          } else {
+            currentCell += ch;
+          }
+        }
+      }
+
+      if (currentCell.length > 0 || currentRow.length > 0) {
+        currentRow.push(currentCell.trim());
+        rows.push(currentRow);
+      }
+
+      return rows.filter(r => r.some(cell => cell.length > 0));
+    }
+
+    function parseCsvInput(rawText) {
+      const trimmed = (rawText || '').trim();
+      if (!trimmed) {
+        document.getElementById('csvMappingSection').classList.add('hidden');
+        document.getElementById('csvPreviewSection').classList.add('hidden');
+        document.getElementById('csvConfirmImportBtn').disabled = true;
+        return;
+      }
+
+      const matrix = parseCsvText(trimmed);
+      if (matrix.length < 2) {
+        document.getElementById('csvMappingSection').classList.add('hidden');
+        document.getElementById('csvPreviewSection').classList.remove('hidden');
+        document.getElementById('csvValidationSummary').innerHTML = `<span class="text-coral-600 font-bold">Please include a header row and at least one data row.</span>`;
+        document.getElementById('csvPreviewBody').innerHTML = '';
+        document.getElementById('csvConfirmImportBtn').disabled = true;
+        return;
+      }
+
+      parsedCsvHeaders = matrix[0];
+      parsedCsvRows = matrix.slice(1);
+
+      // Smart Header Auto-Mapping
+      csvColumnMapping = {};
+      SIFTR_SCHEMA_FIELDS.forEach(field => {
+        const matchIdx = parsedCsvHeaders.findIndex(h => {
+          const norm = h.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim();
+          return field.aliases.some(alias => norm === alias || norm.includes(alias));
+        });
+        csvColumnMapping[field.key] = matchIdx;
+      });
+
+      renderCsvMappingControls();
+      rebuildCsvPreview();
+    }
+
+    function renderCsvMappingControls() {
+      const section = document.getElementById('csvMappingSection');
+      const grid = document.getElementById('csvMappingGrid');
+      const badge = document.getElementById('csvDetectedBadge');
+
+      section.classList.remove('hidden');
+      badge.innerText = `${parsedCsvHeaders.length} CSV columns · ${parsedCsvRows.length} row(s)`;
+
+      const headerOptions = (selectedIdx) => {
+        let html = `<option value="-1" ${selectedIdx === -1 ? 'selected' : ''}>— Not mapped (use default) —</option>`;
+        parsedCsvHeaders.forEach((h, idx) => {
+          html += `<option value="${idx}" ${selectedIdx === idx ? 'selected' : ''}>Col ${idx + 1}: ${escapeHtml(h)}</option>`;
+        });
+        return html;
+      };
+
+      grid.innerHTML = SIFTR_SCHEMA_FIELDS.map(f => `
+        <div class="bg-white border border-sand-200 rounded-lg p-2 flex flex-col gap-1">
+          <label class="text-[10px] font-bold uppercase tracking-wider text-[#2f2963]">${escapeHtml(f.label)}</label>
+          <select onchange="updateCsvColumnMap('${f.key}', parseInt(this.value, 10))" class="w-full bg-sand-50 border border-sand-200 rounded px-2 py-1 text-[11px] font-medium text-[#2f2963] focus:outline-none focus:border-[#454372]">
+            ${headerOptions(csvColumnMapping[f.key])}
+          </select>
+        </div>
+      `).join('');
+    }
+
+    function updateCsvColumnMap(schemaKey, colIdx) {
+      csvColumnMapping[schemaKey] = colIdx;
+      rebuildCsvPreview();
+    }
+
+    function normaliseScoreBucket(rawVal, fallback = 3) {
+      if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') return { val: fallback, defaulted: true };
+      const str = String(rawVal).trim().toLowerCase();
+      const numMatch = str.match(/^(\d)/);
+      if (numMatch) {
+        const n = Math.max(0, Math.min(5, parseInt(numMatch[1], 10)));
+        return { val: n, defaulted: false };
+      }
+      if (str.includes('very high')) return { val: 5, defaulted: false };
+      if (str.includes('high')) return { val: 4, defaulted: false };
+      if (str.includes('med')) return { val: 3, defaulted: false };
+      if (str.includes('very low')) return { val: 1, defaulted: false };
+      if (str.includes('low')) return { val: 2, defaulted: false };
+      if (str.includes('none')) return { val: 0, defaulted: false };
+      return { val: fallback, defaulted: true };
+    }
+
+    function normaliseEffortCode(rawVal) {
+      const validCodes = prefs.effortSizes.map(e => e.code.toUpperCase());
+      if (!rawVal) return { code: 'M', defaulted: true };
+      const clean = String(rawVal).trim().toUpperCase();
+      if (validCodes.includes(clean)) return { code: clean, defaulted: false };
+      const prefix = clean.split(/[\s(:-]/)[0];
+      if (validCodes.includes(prefix)) return { code: prefix, defaulted: false };
+      if (clean.includes('EXTRA SMALL')) return { code: 'XS', defaulted: false };
+      if (clean.includes('SMALL')) return { code: 'S', defaulted: false };
+      if (clean.includes('EXTRA LARGE')) return { code: 'XL', defaulted: false };
+      if (clean.includes('LARGE')) return { code: 'L', defaulted: false };
+      return { code: 'M', defaulted: true };
+    }
+
+    function normaliseConfidence(rawVal) {
+      if (!rawVal) return { val: 0.7, defaulted: true };
+      const str = String(rawVal).trim().toLowerCase();
+      const num = parseFloat(str.replace('×', '').replace('x', '').replace('%', ''));
+      if (!isNaN(num)) {
+        const ratio = num > 1 ? num / 100 : num;
+        const allowed = [0.5, 0.7, 0.85, 1.0];
+        const closest = allowed.reduce((prev, curr) => Math.abs(curr - ratio) < Math.abs(prev - ratio) ? curr : prev);
+        return { val: closest, defaulted: false };
+      }
+      if (str.includes('a/b') || str.includes('valid')) return { val: 1.0, defaulted: false };
+      if (str.includes('analog') || str.includes('data')) return { val: 0.85, defaulted: false };
+      if (str.includes('qual') || str.includes('research')) return { val: 0.7, defaulted: false };
+      if (str.includes('gut') || str.includes('low')) return { val: 0.5, defaulted: false };
+      return { val: 0.7, defaulted: true };
+    }
+
+    function normaliseCltvTier(rawVal) {
+      const defaultTier = prefs.cltvTiers[0];
+      if (!rawVal) return { tier: defaultTier, defaulted: true };
+      const str = String(rawVal).trim().toLowerCase();
+      const found = prefs.cltvTiers.find(t =>
+        t.id.toLowerCase() === str ||
+        t.name.toLowerCase().includes(str) ||
+        str.includes(t.name.toLowerCase())
+      );
+      if (found) return { tier: found, defaulted: false };
+      return { tier: defaultTier, defaulted: true };
+    }
+
+    function normaliseProductArea(rawVal) {
+      const validAreas = getAreaNames();
+      if (!rawVal) return { area: validAreas[0], defaulted: true };
+      const str = String(rawVal).trim();
+      const found = validAreas.find(a => a.toLowerCase() === str.toLowerCase());
+      if (found) return { area: found, defaulted: false };
+      return { area: validAreas[0], defaulted: true };
+    }
+
+    function rebuildCsvPreview() {
+      const section = document.getElementById('csvPreviewSection');
+      const tbody = document.getElementById('csvPreviewBody');
+      const summary = document.getElementById('csvValidationSummary');
+      const importBtn = document.getElementById('csvConfirmImportBtn');
+
+      section.classList.remove('hidden');
+      mappedPreviewRecords = [];
+      let validCount = 0;
+      let warningCount = 0;
+      let errorCount = 0;
+
+      const getCell = (row, key) => {
+        const idx = csvColumnMapping[key];
+        return (typeof idx === 'number' && idx >= 0 && idx < row.length) ? row[idx] : '';
+      };
+
+      const previewHtml = parsedCsvRows.map((row, rIdx) => {
+        const warnings = [];
+        const rawTitle = getCell(row, 'name');
+        const isMissingTitle = !rawTitle || rawTitle.trim().length === 0;
+
+        const areaRes = normaliseProductArea(getCell(row, 'area'));
+        if (areaRes.defaulted && getCell(row, 'area')) warnings.push(`Unknown area → ${areaRes.area}`);
+
+        const acqRes = normaliseScoreBucket(getCell(row, 'acq'), 3);
+        const engRes = normaliseScoreBucket(getCell(row, 'engRet'), 3);
+        const stratRes = normaliseScoreBucket(getCell(row, 'strategy'), 3);
+
+        const cltvRes = normaliseCltvTier(getCell(row, 'cltvTier'));
+        if (cltvRes.defaulted && getCell(row, 'cltvTier')) warnings.push(`Unrecognised CLTV tier → ${cltvRes.tier.name}`);
+
+        const effortRes = normaliseEffortCode(getCell(row, 'effort'));
+        if (effortRes.defaulted && getCell(row, 'effort')) warnings.push(`Unrecognised effort → ${effortRes.code}`);
+
+        const confRes = normaliseConfidence(getCell(row, 'confidence'));
+
+        const rawStarts = parseInt(String(getCell(row, 'monthlyStarts')).replace(/[^0-9]/g, ''), 10);
+        const acqBucket = prefs.acqBuckets.find(b => b.level === acqRes.val);
+        const monthlyStarts = !isNaN(rawStarts) ? rawStarts : (acqBucket ? acqBucket.defaultStarts : 400);
+
+        const rawDoor = getCell(row, 'door').toLowerCase();
+        const door = rawDoor.includes('1') || rawDoor.includes('one') ? 'Type 1' : 'Type 2';
+
+        const rawRisk = getCell(row, 'risk').toLowerCase();
+        const risk = rawRisk.includes('high') ? 'High' : (rawRisk.includes('mod') || rawRisk.includes('med') ? 'Moderate' : 'Low');
+
+        const rawHyp = getCell(row, 'hypothesis');
+        const hypothesis = rawHyp || 'Imported via CSV — review and refine reader behaviour hypothesis.';
+        if (!rawHyp) warnings.push('Default hypothesis applied');
+
+        const record = {
+          id: 'init_csv_' + Date.now() + '_' + rIdx,
+          name: rawTitle.trim(),
+          area: areaRes.area,
+          hypothesis,
+          acq: acqRes.val,
+          engRet: engRes.val,
+          strategy: stratRes.val,
+          cltvTierId: cltvRes.tier.id,
+          monthlyStarts,
+          effort: effortRes.code,
+          confidence: confRes.val,
+          door,
+          risk,
+          guardrail: getCell(row, 'guardrail') || 'Monitor core subscriber retention & experience metrics',
+          validation: getCell(row, 'validation') || 'Run lightweight holdout or prototype test'
+        };
+
+        let statusBadge = '';
+        if (isMissingTitle) {
+          errorCount++;
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-coral-100 text-coral-600 font-bold">Skipped (No Title)</span>`;
+        } else if (warnings.length > 0) {
+          validCount++;
+          warningCount++;
+          mappedPreviewRecords.push(record);
+          statusBadge = `<span title="${escapeHtml(warnings.join(' · '))}" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sand-100 text-sand-600 font-bold cursor-help">Ready (${warnings.length} default)</span>`;
+        } else {
+          validCount++;
+          mappedPreviewRecords.push(record);
+          statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-sage-100 text-sage-700 font-bold">Valid</span>`;
+        }
+
+        return `
+          <tr class="${isMissingTitle ? 'opacity-50 bg-coral-50/40' : ''}">
+            <td class="py-2 px-2.5 whitespace-nowrap">${statusBadge}</td>
+            <td class="py-2 px-2.5 font-bold text-[#2f2963]">${escapeHtml(record.name || '— Missing Title —')}</td>
+            <td class="py-2 px-2.5 text-sage-700">${escapeHtml(record.area)}</td>
+            <td class="py-2 px-2.5 font-mono text-[#2f2963]">${record.acq} / ${record.engRet} / ${record.strategy}</td>
+            <td class="py-2 px-2.5 text-sage-700">${escapeHtml(cltvRes.tier.name)}</td>
+            <td class="py-2 px-2.5 font-mono text-[#2f2963]">${record.effort} · ${record.confidence}×</td>
+            <td class="py-2 px-2.5 text-sage-700 truncate max-w-[160px]">${escapeHtml(record.guardrail)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.innerHTML = previewHtml;
+
+      summary.innerHTML = `
+        <span class="text-sage-700 font-bold">${validCount} ready to import</span>
+        ${warningCount > 0 ? ` · <span class="text-sand-600">${warningCount} using smart defaults</span>` : ''}
+        ${errorCount > 0 ? ` · <span class="text-coral-600 font-bold">${errorCount} skipped (missing title)</span>` : ''}
+      `;
+
+      importBtn.disabled = validCount === 0;
+      importBtn.innerText = validCount > 0 ? `Import ${validCount} Initiative${validCount === 1 ? '' : 's'}` : 'Import Valid Rows';
+    }
+
+    function confirmCsvImport() {
+      if (mappedPreviewRecords.length === 0) return;
+      const replace = document.getElementById('csvReplaceExisting').checked;
+      if (replace) {
+        initiatives = [...mappedPreviewRecords];
+      } else {
+        initiatives = [...initiatives, ...mappedPreviewRecords];
+      }
+      closeCsvImportModal();
+      showToast(`Imported ${mappedPreviewRecords.length} initiative${mappedPreviewRecords.length === 1 ? '' : 's'} from CSV`);
+      renderAll();
+    }
+
+    // 10. PREFERENCES & RUBRICS MODAL LOGIC
+    function openPreferencesModal(focusSection = null) {
+      draftPrefs = JSON.parse(JSON.stringify(prefs));
+      renderPreferencesForm();
+      document.getElementById('preferencesModal').classList.remove('hidden');
+      lucide.createIcons();
+
+      if (focusSection === 'areas') {
+        setTimeout(() => {
+          const sec = document.getElementById('prefAreasSection');
+          if (sec) {
+            sec.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const firstInput = sec.querySelector('input');
+            if (firstInput) firstInput.focus();
+          }
+        }, 60);
+      }
+    }
+
+    function closePreferencesModal() {
+      document.getElementById('preferencesModal').classList.add('hidden');
+    }
+
+    function renderPreferencesForm() {
+      // 1. CLTV Tiers
+      const cltvBox = document.getElementById('prefCltvList');
+      cltvBox.innerHTML = draftPrefs.cltvTiers.map((t, idx) => `
+        <div class="flex items-center gap-2">
+          <input type="text" value="${escapeHtml(t.name)}" onchange="draftPrefs.cltvTiers[${idx}].name = this.value" placeholder="Tier name" class="flex-1 bg-white border border-sand-200 rounded-lg px-2.5 py-1.5 text-[#2f2963]">
+          <div class="relative w-28">
+            <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-sage-700 font-mono">£</span>
+            <input type="number" min="1" step="1" value="${t.cltv}" onchange="draftPrefs.cltvTiers[${idx}].cltv = parseFloat(this.value) || 0" class="w-full bg-white border border-sand-200 rounded-lg pl-6 pr-2 py-1.5 font-mono text-[#2f2963]">
+          </div>
+          ${draftPrefs.cltvTiers.length > 1 ? `
+            <button type="button" onclick="removePrefCltvRow(${idx})" class="p-1.5 text-sage-700 hover:text-coral-600" title="Remove tier">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          ` : ''}
+        </div>
+      `).join('');
+
+      // 2. Acquisition Buckets
+      const acqBox = document.getElementById('prefAcqList');
+      acqBox.innerHTML = draftPrefs.acqBuckets.map((b, idx) => `
+        <div class="flex items-center gap-2">
+          <input type="text" value="${escapeHtml(b.label)}" onchange="draftPrefs.acqBuckets[${idx}].label = this.value" class="flex-1 bg-white border border-sand-200 rounded-lg px-2.5 py-1.5 text-[#2f2963]">
+          <input type="number" min="0" step="10" value="${b.defaultStarts}" onchange="draftPrefs.acqBuckets[${idx}].defaultStarts = parseInt(this.value, 10) || 0" title="Default monthly starts" class="w-24 bg-white border border-sand-200 rounded-lg px-2 py-1.5 font-mono text-[#2f2963]">
+        </div>
+      `).join('');
+
+      // 3. Product Areas / Squads
+      const areasBox = document.getElementById('prefAreasList');
+      const colorOptionsHtml = (selectedColor) => Object.entries(AREA_COLOR_THEMES).map(([key, val]) =>
+        `<option value="${key}" ${selectedColor === key ? 'selected' : ''}>${val.label}</option>`
+      ).join('');
+
+      areasBox.innerHTML = draftPrefs.areas.map((areaObj, idx) => {
+        const name = typeof areaObj === 'string' ? areaObj : areaObj.name;
+        const color = areaObj.color || 'indigo';
+        return `
+          <div class="flex items-center gap-2">
+            <input type="text" value="${escapeHtml(name)}" onchange="renameDraftArea(${idx}, this.value)" placeholder="Area name" class="flex-1 bg-white border border-sand-200 rounded-lg px-2.5 py-1.5 text-[#2f2963] font-medium">
+            <select onchange="draftPrefs.areas[${idx}].color = this.value" aria-label="Area colour badge" class="bg-white border border-sand-200 rounded-lg px-2 py-1.5 text-[#2f2963]">
+              ${colorOptionsHtml(color)}
+            </select>
+            ${draftPrefs.areas.length > 1 ? `
+              <button type="button" onclick="removePrefAreaRow(${idx})" class="p-1.5 text-sage-700 hover:text-coral-600" title="Remove Product Area">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      // 4. Effort Sizes
+      const effortBox = document.getElementById('prefEffortList');
+      effortBox.innerHTML = draftPrefs.effortSizes.map((e, idx) => `
+        <div class="flex items-center gap-2">
+          <span class="w-7 text-center font-mono font-bold text-sage-700">${escapeHtml(e.code)}</span>
+          <input type="text" value="${escapeHtml(e.label)}" onchange="draftPrefs.effortSizes[${idx}].label = this.value" class="flex-1 bg-white border border-sand-200 rounded-lg px-2.5 py-1.5 text-[#2f2963]">
+        </div>
+      `).join('');
+
+      // 5. Engagement & Retention Buckets
+      const engBox = document.getElementById('prefEngRetList');
+      engBox.innerHTML = draftPrefs.engRetBuckets.map((b, idx) => `
+        <input type="text" value="${escapeHtml(b.label)}" onchange="draftPrefs.engRetBuckets[${idx}].label = this.value" class="w-full bg-white border border-sand-200 rounded-lg px-2.5 py-1.5 text-[#2f2963]">
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function renameDraftArea(idx, newName) {
+      const clean = newName.trim();
+      if (!clean) return;
+      const oldName = draftPrefs.areas[idx].name;
+      draftPrefs.areas[idx].name = clean;
+      draftPrefs.areas[idx]._renamedFrom = draftPrefs.areas[idx]._renamedFrom || oldName;
+    }
+
+    function addPrefAreaRow() {
+      const colors = Object.keys(AREA_COLOR_THEMES);
+      const nextColor = colors[draftPrefs.areas.length % colors.length];
+      draftPrefs.areas.push({
+        name: `New Product Area ${draftPrefs.areas.length + 1}`,
+        color: nextColor
+      });
+      renderPreferencesForm();
+    }
+
+    function removePrefAreaRow(idx) {
+      if (draftPrefs.areas.length <= 1) return;
+      draftPrefs.areas.splice(idx, 1);
+      renderPreferencesForm();
+    }
+
+    function addPrefCltvRow() {
+      draftPrefs.cltvTiers.push({
+        id: 'tier_' + Date.now(),
+        name: 'New Subscriber Plan',
+        cltv: 180
+      });
+      renderPreferencesForm();
+    }
+
+    function removePrefCltvRow(idx) {
+      draftPrefs.cltvTiers.splice(idx, 1);
+      renderPreferencesForm();
+    }
+
+    function applyIndustryPreset(templateKey, resetInitiativesToo) {
+      const tpl = INDUSTRY_TEMPLATES[templateKey];
+      if (!tpl) return;
+      draftPrefs = JSON.parse(JSON.stringify(tpl));
+
+      if (resetInitiativesToo) {
+        prefs = JSON.parse(JSON.stringify(tpl));
+        initiatives = JSON.parse(JSON.stringify(DEFAULT_INITIATIVES));
+        syncAllDropdownOptions();
+        closePreferencesModal();
+        showToast('Reset rubrics and sample initiatives to defaults');
+        renderAll();
+      } else {
+        renderPreferencesForm();
+        showToast(`Loaded "${tpl.label}" rubric template — click Save Preferences to apply`);
+      }
+    }
+
+    function savePreferences() {
+      // Clean empty area names
+      draftPrefs.areas = draftPrefs.areas
+        .map(a => ({ name: (a.name || '').trim(), color: a.color || 'blue', _renamedFrom: a._renamedFrom }))
+        .filter(a => a.name.length > 0);
+
+      if (draftPrefs.areas.length === 0) {
+        draftPrefs.areas = [{ name: 'Core Product', color: 'indigo' }];
+      }
+
+      // Apply area renames to existing initiatives before stripping metadata
+      draftPrefs.areas.forEach(a => {
+        if (a._renamedFrom && a._renamedFrom !== a.name) {
+          initiatives.forEach(item => {
+            if (item.area === a._renamedFrom) item.area = a.name;
+          });
+        }
+        delete a._renamedFrom;
+      });
+
+      prefs = JSON.parse(JSON.stringify(draftPrefs));
+      const validAreaNames = getAreaNames();
+
+      // Ensure existing initiatives map cleanly to valid area & tier IDs (auto-reassign deleted areas)
+      initiatives.forEach(item => {
+        if (!validAreaNames.includes(item.area)) {
+          item.area = validAreaNames[0];
+        }
+        if (!prefs.cltvTiers.some(t => t.id === item.cltvTierId) && prefs.cltvTiers[0]) {
+          item.cltvTierId = prefs.cltvTiers[0].id;
+        }
+      });
+
+      syncAllDropdownOptions();
+      closePreferencesModal();
+      showToast('Preferences & rubrics saved');
+      renderAll();
+    }
+
+    // 11. TAB NAVIGATION, ADD/EDIT MODAL & HELPERS
+    function switchTab(tabId) {
+      ['tabMatrix', 'tabVisualMap', 'tabDecisionBrief'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.setAttribute('aria-selected', 'false');
+        btn.classList.remove('border-2', 'border-[#2f2963]', 'bg-[#2f2963]', 'text-white', 'font-bold', 'shadow-xs');
+        btn.classList.add('border', 'border-sand-200', 'bg-sand-100/90', 'text-[#2f2963]', 'hover:bg-plum-100', 'hover:border-[#454372]/40', 'font-semibold');
+        const icon = btn.querySelector('.tab-icon');
+        if (icon) {
+          icon.classList.remove('text-[#ef946c]');
+          icon.classList.add('text-[#454372]');
+        }
+      });
+
+      const map = {
+        tabMatrix: 'btnTabMatrix',
+        tabVisualMap: 'btnTabVisualMap',
+        tabDecisionBrief: 'btnTabDecisionBrief'
+      };
+      const active = document.getElementById(map[tabId]);
+      active.setAttribute('aria-selected', 'true');
+      active.classList.remove('border', 'border-sand-200', 'bg-sand-100/90', 'hover:bg-plum-100', 'hover:border-[#454372]/40', 'font-semibold');
+      active.classList.add('border-2', 'border-[#2f2963]', 'bg-[#2f2963]', 'text-white', 'font-bold', 'shadow-xs');
+      const activeIcon = active.querySelector('.tab-icon');
+      if (activeIcon) {
+        activeIcon.classList.remove('text-[#454372]');
+        activeIcon.classList.add('text-[#ef946c]');
+      }
+
+      if (tabId === 'tabVisualMap') updateTradeOffChart();
+      lucide.createIcons();
+    }
+
+    function toggleGuideBanner() {
+      const wrapper = document.getElementById('unifiedGuideWrapper');
+      const btn = document.getElementById('guideToggleBtn');
+      const isHidden = wrapper.classList.toggle('hidden');
+
+      btn.setAttribute('aria-expanded', String(!isHidden));
+      btn.innerHTML = isHidden
+        ? `<i data-lucide="book-open" class="w-3.5 h-3.5 text-[#454372]"></i><span id="guideToggleText">How Siftr Works &amp; Guide</span>`
+        : `<i data-lucide="eye-off" class="w-3.5 h-3.5 text-[#454372]"></i><span id="guideToggleText">Hide Guide</span>`;
+      lucide.createIcons();
+    }
+
+    function syncStartsFromAcqBucket() {
+      const level = parseInt(document.getElementById('fieldAcq').value, 10);
+      const bucket = prefs.acqBuckets.find(b => b.level === level);
+      if (bucket && typeof bucket.defaultStarts === 'number') {
+        document.getElementById('fieldMonthlyStarts').value = bucket.defaultStarts;
+      }
+      recalculateModalPreview();
+    }
+
+    function recalculateModalPreview() {
+      const tierId = document.getElementById('fieldCltvTier').value;
+      const tierObj = resolveCltvTier(tierId);
+      const starts = parseFloat(document.getElementById('fieldMonthlyStarts').value) || 0;
+      const gross = tierObj.cltv * starts * 12;
+      document.getElementById('modalGrossCltvPreview').innerText = formatGBP(gross);
+    }
+
+    function openInitiativeModal(editId = null) {
+      const modal = document.getElementById('initiativeModal');
+      const form = document.getElementById('initiativeForm');
+      syncAllDropdownOptions();
+      form.reset();
+
+      if (editId) {
+        const item = initiatives.find(i => i.id === editId);
+        if (item) {
+          document.getElementById('modalHeading').innerText = 'Edit Product Initiative';
+          document.getElementById('editItemId').value = item.id;
+          document.getElementById('fieldName').value = item.name;
+          document.getElementById('fieldArea').value = item.area;
+          document.getElementById('fieldHypothesis').value = item.hypothesis;
+          document.getElementById('fieldAcq').value = item.acq;
+          document.getElementById('fieldEngRet').value = item.engRet;
+          document.getElementById('fieldStrategy').value = item.strategy;
+          document.getElementById('fieldCltvTier').value = item.cltvTierId;
+          document.getElementById('fieldMonthlyStarts').value = item.monthlyStarts;
+          document.getElementById('fieldEffort').value = item.effort;
+          document.getElementById('fieldConfidence').value = item.confidence;
+          document.getElementById('fieldDoor').value = item.door;
+          document.getElementById('fieldRisk').value = item.risk;
+          document.getElementById('fieldGuardrail').value = item.guardrail || '';
+          document.getElementById('fieldValidation').value = item.validation || '';
+        }
+      } else {
+        document.getElementById('modalHeading').innerText = 'Add Product Initiative';
+        document.getElementById('editItemId').value = '';
+        document.getElementById('fieldAcq').value = 3;
+        document.getElementById('fieldEngRet').value = 3;
+        document.getElementById('fieldStrategy').value = 4;
+        document.getElementById('fieldEffort').value = 'M';
+        document.getElementById('fieldConfidence').value = 0.85;
+        syncStartsFromAcqBucket();
+      }
+
+      recalculateModalPreview();
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeInitiativeModal() {
+      document.getElementById('initiativeModal').classList.add('hidden');
+    }
+
+    function saveInitiativeForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('editItemId').value || 'init_' + Date.now();
+
+      const record = {
+        id,
+        name: document.getElementById('fieldName').value.trim(),
+        area: document.getElementById('fieldArea').value,
+        hypothesis: document.getElementById('fieldHypothesis').value.trim(),
+        acq: parseInt(document.getElementById('fieldAcq').value, 10),
+        engRet: parseInt(document.getElementById('fieldEngRet').value, 10),
+        strategy: parseInt(document.getElementById('fieldStrategy').value, 10),
+        cltvTierId: document.getElementById('fieldCltvTier').value,
+        monthlyStarts: parseInt(document.getElementById('fieldMonthlyStarts').value, 10) || 0,
+        effort: document.getElementById('fieldEffort').value,
+        confidence: parseFloat(document.getElementById('fieldConfidence').value),
+        door: document.getElementById('fieldDoor').value,
+        risk: document.getElementById('fieldRisk').value,
+        guardrail: document.getElementById('fieldGuardrail').value.trim(),
+        validation: document.getElementById('fieldValidation').value.trim()
+      };
+
+      const existingIdx = initiatives.findIndex(i => i.id === id);
+      if (existingIdx >= 0) {
+        initiatives[existingIdx] = record;
+        showToast('Initiative updated');
+      } else {
+        initiatives.push(record);
+        showToast('Initiative added to Siftr');
+      }
+
+      closeInitiativeModal();
+      renderAll();
+    }
+
+    function removeInitiative(id) {
+      initiatives = initiatives.filter(i => i.id !== id);
+      showToast('Initiative removed');
+      renderAll();
+    }
+
+    function clearAllInitiatives() {
+      initiatives = [];
+      showToast('Table cleared — ready for your initiatives');
+      renderAll();
+    }
+
+    function copyMarkdownBrief() {
+      const items = getFilteredScored().sort((a, b) => b.score - a.score);
+      let md = `# Siftr — Subscription Product Trade-Off & Prioritisation Brief\n\n`;
+
+      if (items.length >= 2) {
+        md += `## 1. "Even-Over" Trade-Off Declaration\n`;
+        md += `> We prioritise **${items[0].name}** (${items[0].area}) **EVEN OVER** **${items[1].name}** (${items[1].area}), `;
+        md += `because it delivers an estimated **${formatGBP(items[0].adjustedAnnualCltv)}/yr** at **${items[0].confidence}×** confidence.\n\n`;
+      }
+
+      md += `## 2. Ranked Initiatives\n\n`;
+      md += `| Rank | Initiative | Product Area | Annualised Value | Effort | Confidence | Score | Verdict |\n`;
+      md += `|:----:|:-----------|:-------------|:----------------:|:------:|:----------:|:-----:|:--------|\n`;
+
+      items.forEach((it, idx) => {
+        md += `| #${idx + 1} | ${it.name} | ${it.area} | ${formatGBP(it.adjustedAnnualCltv)}/yr | ${it.effort} | ${it.confidence}× | **${it.score}** | ${it.verdict} |\n`;
+      });
+
+      md += `\n## 3. Hypotheses, Counter-Metric Guardrails & Validation Steps\n\n`;
+      items.forEach(it => {
+        md += `- **${it.name}**: *${it.hypothesis}* — Validation step: ${it.validation || 'Lightweight holdout test'}. *(Guardrail: ${it.guardrail || 'Monitor core subscriber metrics'})*\n`;
+      });
+
+      const ta = document.createElement('textarea');
+      ta.value = md;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+
+      showToast('Markdown brief copied to clipboard');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toastBanner');
+      document.getElementById('toastText').innerText = message;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2600);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"'`=\/]/g, s => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;'
+      }[s]));
+    }
+  </script>
+</body>
+</html>
